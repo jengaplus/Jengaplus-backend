@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Jengaplus",
+    "slug": "jengaplus",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.jengaplustpsteam.jengaplus"
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "52d71363-b8cd-4677-a1ed-2d2e3c29143f"
+      },
+      "apiBase": "https://jengaplus-backend.onrender.com"
+    },
+    "owner": "jengaplustps-team"
+  }
+}

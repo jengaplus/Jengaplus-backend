@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "c8210d65-d543-4b2d-ad51-673680e9b07a"
+      }
+    },
+    "android": {
+      "package": "com.jengaplustp.jengaplusbackend"
+    }
+  }
+}

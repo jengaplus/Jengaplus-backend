@@ -1,0 +1,3 @@
+id,tenant_id,name,phone,address,category,credit_score,credit_limit,outstanding_balance,loyalty_points,loyalty_tier,created_at
+"2","3","Beta Builders","+255754987654","Dar es Salaam","Retail","650","10000000.00","0.00","0","Silver","2026-08-09T00:49:50.157Z"
+"1","3","Alpha Construction Ltd","+255788111222","Arusha","Wholesale","650","50000000.00","500000.00","0","Gold","2026-08-09T00:49:46.683Z"

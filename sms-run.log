@@ -1,0 +1,10 @@
+﻿node : SMS send failed: NextSMS send failed: {"message":"The from field is 
+required. (and 1 more error)","errors":{"from":["The from field is 
+required."],"text":["The text field is required."]}}
+At line:1 char:68
++ ... Desktop\PRINCE\Jengaplus\backend'; node send-test-sms.js 2>&1 | Out-F ...
++                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (SMS send failed...s required."]}} 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, SafeAreaView, Dimensions } from 'react-native';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import Constants from 'expo-constants';
@@ -19,6 +19,8 @@ export default function App() {
   const [authToken, setAuthToken] = useState(null);
   const [authStatusMessage, setAuthStatusMessage] = useState('');
   const [registerForm, setRegisterForm] = useState({ business_name: '', subdomain: '', name: '', email: '', password: '', role: 'Boss' });
+  const sessionTimeoutRef = useRef(null);
+  const SESSION_TIMEOUT_MS = 10 * 60 * 1000;
   const [otpCode, setOtpCode] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [resetToken, setResetToken] = useState('');
@@ -1262,13 +1264,42 @@ export default function App() {
     }
   };
 
+  const clearSessionTimeout = () => {
+    if (sessionTimeoutRef.current) {
+      clearTimeout(sessionTimeoutRef.current);
+      sessionTimeoutRef.current = null;
+    }
+  };
+
   const handleLogout = () => {
+    clearSessionTimeout();
     setEmail('');
     setPassword('');
     setAuthToken(null);
     setUserSession(null);
     setCurrentScreen('Login');
   };
+
+  const startSessionTimeout = () => {
+    clearSessionTimeout();
+    if (!authToken || !userSession) return;
+    sessionTimeoutRef.current = setTimeout(() => {
+      handleLogout();
+      Alert.alert('Session expired', 'You have been logged out due to inactivity.');
+    }, SESSION_TIMEOUT_MS);
+  };
+
+  const handleUserActivity = () => {
+    if (!authToken || !userSession) return;
+    startSessionTimeout();
+  };
+
+  useEffect(() => {
+    startSessionTimeout();
+    return () => {
+      clearSessionTimeout();
+    };
+  }, [authToken, userSession, currentScreen]);
 
   const authFetch = async (url, options = {}) => {
     const headers = { ...(options.headers || {}) };
@@ -1573,7 +1604,11 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.mainContainer}>
+    <SafeAreaView
+      style={styles.mainContainer}
+      onStartShouldSetResponder={() => true}
+      onResponderGrant={handleUserActivity}
+    >
       {currentScreen === 'Login' && (
         <View style={styles.loginScreenWrapper}>
           <View style={styles.loginBackdrop} />
@@ -3597,7 +3632,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: '#020814', paddingTop: Constants.statusBarHeight || 12 },
+  mainContainer: { flex: 1, backgroundColor: '#020814', paddingTop: (Constants.statusBarHeight || 12) + 12 },
   loginScreenWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, backgroundColor: '#020814' },
   loginBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#020814' },
   loginGradientOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(13, 32, 68, 0.34)' },
@@ -3621,7 +3656,7 @@ const styles = StyleSheet.create({
   secondaryActionText: { color: '#CBD5E1', fontSize: 13, fontWeight: '700' },
   cardSubtitle: { fontSize: 12, color: '#94A3B8', marginTop: 8 },
   dashboardContainer: { flex: 1, backgroundColor: '#020814', padding: 20 },
-  dashboardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 1, borderBottomColor: 'rgba(148, 163, 184, 0.14)', paddingBottom: 18, marginTop: 10 },
+  dashboardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 1, borderBottomColor: 'rgba(148, 163, 184, 0.14)', paddingTop: 14, paddingBottom: 18, marginTop: 18 },
   welcomeTxt: { fontSize: 13, color: '#94A3B8' },
   userNameTitle: { fontSize: 22, fontWeight: '900', color: '#F8FAFC' },
   userRoleTag: { fontSize: 12, color: '#FACC15', fontWeight: '700', marginTop: 4, letterSpacing: 1 },

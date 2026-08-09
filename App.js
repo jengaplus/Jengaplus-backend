@@ -1606,8 +1606,9 @@ export default function App() {
   return (
     <SafeAreaView
       style={styles.mainContainer}
-      onStartShouldSetResponder={() => true}
+      onStartShouldSetResponderCapture={() => true}
       onResponderGrant={handleUserActivity}
+      onTouchStart={handleUserActivity}
     >
       {currentScreen === 'Login' && (
         <View style={styles.loginScreenWrapper}>

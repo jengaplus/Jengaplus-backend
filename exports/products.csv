@@ -1,0 +1,6 @@
+id,tenant_id,category,name,unit,price,stock_quantity,low_stock_threshold,created_at
+"1","3","Cement","Dangote Cement 50kg","Bag","18000.00","1200","10","2026-08-09T00:49:39.760Z"
+"2","3","Sand","River Sand (m3)","m3","45000.00","300","10","2026-08-09T00:49:40.357Z"
+"3","3","Gravel","Crushed Stone (m3)","m3","55000.00","250","10","2026-08-09T00:49:40.929Z"
+"4","3","Steel","Rebar 12mm","Piece","1200.00","5000","10","2026-08-09T00:49:41.531Z"
+"5","3","Bricks","Burnt Clay Brick","Piece","350.00","50000","10","2026-08-09T00:49:42.141Z"

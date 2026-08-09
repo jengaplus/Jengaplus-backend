@@ -13,12 +13,15 @@
     },
     "production": {
       "autoIncrement": true
+<<<<<<< HEAD
     },
     "apk": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
+=======
+>>>>>>> 2a4f386f8147752f3602dbce6c6617a8dc3a1d54
     }
   },
   "submit": {

@@ -1,5 +1,6 @@
 {
   "expo": {
+<<<<<<< HEAD
     "name": "Jengaplus",
     "slug": "jengaplus",
     "version": "1.0.0",
@@ -38,5 +39,15 @@
       "apiBase": "https://jengaplus-backend.onrender.com"
     },
     "owner": "jengaplustps-team"
+=======
+    "extra": {
+      "eas": {
+        "projectId": "c8210d65-d543-4b2d-ad51-673680e9b07a"
+      }
+    },
+    "android": {
+      "package": "com.jengaplustp.jengaplusbackend"
+    }
+>>>>>>> 2a4f386f8147752f3602dbce6c6617a8dc3a1d54
   }
 }

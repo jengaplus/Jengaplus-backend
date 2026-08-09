@@ -416,6 +416,45 @@ const resetAndInitializeDatabase = async () => {
 
 // --- API ROUTES ---
 
+// 1. AUTHENTICATION API
+const generateToken = (user) => {
+  return jwt.sign({ id: user.id, email: user.email, role: user.role, tenant_id: user.tenant_id }, JWT_SECRET, { expiresIn: '7d' });
+};
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Authorization token missing' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid or expired token' });
+    req.user = user;
+    next();
+  });
+};
+
+const normalizeRole = (r) => (r || '').toString().trim().toLowerCase();
+const authorizeRoles = (...roles) => (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+  const userRole = normalizeRole(req.user.role);
+  const allowed = roles.map(normalizeRole);
+  if (!allowed.includes(userRole)) {
+    return res.status(403).json({ error: 'Forbidden: insufficient privileges' });
+  }
+  next();
+};
+
+const recordAudit = async ({ tenantId = null, userId = null, action, entity, details = {} }) => {
+  try {
+    await pool.query(
+      `INSERT INTO audit_logs (tenant_id, user_id, action, entity, details) VALUES ($1, $2, $3, $4, $5)`,
+      [tenantId, userId, action, entity, JSON.stringify(details)]
+    );
+  } catch (auditErr) {
+    console.warn('Audit log failed:', auditErr.message);
+  }
+};
+
 // Root Endpoint
 app.get('/', (req, res) => {
   res.json({ message: '🚀 JengaPlus SaaS Master Backend API is running successfully' });
@@ -472,45 +511,6 @@ app.patch('/api/admin/tenants/:tenantId/status', authenticateToken, authorizeRol
     res.status(500).json({ error: err.message });
   }
 });
-
-// 1. AUTHENTICATION API
-const generateToken = (user) => {
-  return jwt.sign({ id: user.id, email: user.email, role: user.role, tenant_id: user.tenant_id }, JWT_SECRET, { expiresIn: '7d' });
-};
-
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Authorization token missing' });
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid or expired token' });
-    req.user = user;
-    next();
-  });
-};
-
-const normalizeRole = (r) => (r || '').toString().trim().toLowerCase();
-const authorizeRoles = (...roles) => (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-  const userRole = normalizeRole(req.user.role);
-  const allowed = roles.map(normalizeRole);
-  if (!allowed.includes(userRole)) {
-    return res.status(403).json({ error: 'Forbidden: insufficient privileges' });
-  }
-  next();
-};
-
-const recordAudit = async ({ tenantId = null, userId = null, action, entity, details = {} }) => {
-  try {
-    await pool.query(
-      `INSERT INTO audit_logs (tenant_id, user_id, action, entity, details) VALUES ($1, $2, $3, $4, $5)`,
-      [tenantId, userId, action, entity, JSON.stringify(details)]
-    );
-  } catch (auditErr) {
-    console.warn('Audit log failed:', auditErr.message);
-  }
-};
 
 app.post('/api/auth/register', async (req, res) => {
   const { business_name, subdomain, name, email, password, role, phone } = req.body;

@@ -1,24 +1,8 @@
 {
-<<<<<<< HEAD
   "name": "jengaplus",
   "version": "1.0.0",
+  "private": true,
   "main": "index.js",
-  "dependencies": {
-    "@react-native-picker/picker": "^2.4.8",
-    "bcryptjs": "^2.4.3",
-    "expo": "~57.0.11",
-    "expo-build-properties": "~57.0.9",
-    "expo-camera": "~57.0.3",
-    "expo-constants": "57.0.9",
-    "expo-document-picker": "~57.0.1",
-    "expo-file-system": "~57.0.2",
-    "expo-status-bar": "~57.0.1",
-    "jsonwebtoken": "^9.0.2",
-    "react": "19.2.3",
-    "react-native": "0.86.2",
-    "react-native-chart-kit": "^7.0.0",
-    "react-native-svg": "15.15.4"
-  },
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -26,31 +10,31 @@
     "web": "expo start --web",
     "backend": "cd backend && npm start",
     "backend:install": "cd backend && npm install",
-    "expo:install": "npx expo install expo-document-picker expo-file-system"
-  },
-  "private": true
-=======
-  "name": "jengaplus-backend",
-  "version": "1.0.0",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "start:dryrun": "cross-env NEXTSMS_DRYRUN=true node server.js",
-    "seed": "node seed.js",
-    "test:sms": "node send-test-sms.js",
-    "test:sms-service": "node services/smsService.test.js"
+    "expo:install": "npx expo install expo-document-picker expo-file-system",
+    "start:backend": "node backend/server.js",
+    "seed": "node backend/seed.js",
+    "test:sms": "node backend/send-test-sms.js",
+    "test:sms-service": "node backend/services/smsService.test.js"
   },
   "dependencies": {
+    "@react-native-picker/picker": "^2.4.8",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.3.1",
-    "expo": "^57.0.11",
+    "expo": "~57.0.11",
+    "expo-build-properties": "~57.0.9",
+    "expo-camera": "~57.0.3",
+    "expo-constants": "57.0.9",
+    "expo-document-picker": "~57.0.1",
+    "expo-file-system": "~57.0.2",
+    "expo-status-bar": "~57.0.1",
     "express": "^4.18.4",
     "jsonwebtoken": "^9.0.2",
     "pdfkit": "^0.13.0",
     "pg": "^8.11.2",
-    "react": "^19.2.8",
-    "react-native": "^0.86.2"
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-chart-kit": "^7.0.0",
+    "react-native-svg": "15.15.4"
   }
->>>>>>> 2a4f386f8147752f3602dbce6c6617a8dc3a1d54
 }

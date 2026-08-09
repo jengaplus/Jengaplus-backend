@@ -2,27 +2,45 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const path = require('path');
 const { Pool } = require('pg');
-require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const smsService = require('./services/smsService');
 const { streamInvoicePDF } = require('./services/pdfService');
+const inventoryService = require('./services/inventoryService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'jengaplus_secret_key';
 const OTP_EXPIRATION_MINUTES = 10;
 const PASSWORD_RESET_EXPIRATION_MINUTES = 60;
+
+const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME || 'Super Admin';
+const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'admin@jengaplus.com';
+const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || 'Admin@1234';
+const SUPERADMIN_ADMISSION = process.env.SUPERADMIN_ADMISSION || `ADM-${Date.now()}`;
+
+if (!process.env.SUPERADMIN_EMAIL || !process.env.SUPERADMIN_PASSWORD) {
+  console.warn('⚠️ SUPERADMIN_EMAIL or SUPERADMIN_PASSWORD not configured. Default SuperAdmin credentials will be used. Set these values in .env for secure production use.');
+}
 
 const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
-// Muunganisho wa Neon Database
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-});
+// Muunganisho wa PostgreSQL
+const poolConfig = {
+  connectionString: process.env.DATABASE_URL
+};
+
+if (process.env.PGSSLMODE && process.env.PGSSLMODE.toLowerCase() !== 'disable') {
+  poolConfig.ssl = {
+    rejectUnauthorized: process.env.PGSSLVERIFY ? process.env.PGSSLVERIFY.toLowerCase() !== 'false' : false
+  };
+} else if (process.env.DATABASE_URL && /(localhost|127\.0\.0\.1|::1)/.test(process.env.DATABASE_URL)) {
+  poolConfig.ssl = false;
+}
+
+const pool = new Pool(poolConfig);
 
 // === FULL RESET & REBUILD DATABASE SCHEMA FROM SCRATCH ===
 const resetAndInitializeDatabase = async () => {
@@ -154,6 +172,18 @@ const resetAndInitializeDatabase = async () => {
     `);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id SERIAL PRIMARY KEY,
+        tenant_id INT REFERENCES tenants(id) ON DELETE CASCADE,
+        user_id INT REFERENCES users(id) ON DELETE SET NULL,
+        action VARCHAR(150) NOT NULL,
+        entity VARCHAR(100) NOT NULL,
+        details JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS purchase_orders (
         id SERIAL PRIMARY KEY,
         tenant_id INT REFERENCES tenants(id) ON DELETE CASCADE,
@@ -166,6 +196,42 @@ const resetAndInitializeDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         notes TEXT
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS purchase_order_items (
+        id SERIAL PRIMARY KEY,
+        tenant_id INT REFERENCES tenants(id) ON DELETE CASCADE,
+        purchase_order_id INT REFERENCES purchase_orders(id) ON DELETE CASCADE,
+        product_id INT REFERENCES products(id),
+        quantity INT DEFAULT 1,
+        unit_price DECIMAL(12,2) DEFAULT 0,
+        line_total DECIMAL(12,2) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Gamification tables
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS badges (
+        id SERIAL PRIMARY KEY,
+        tenant_id INT REFERENCES tenants(id) ON DELETE CASCADE,
+        code VARCHAR(100) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        points INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_badges (
+        id SERIAL PRIMARY KEY,
+        tenant_id INT REFERENCES tenants(id) ON DELETE CASCADE,
+        user_id INT REFERENCES users(id) ON DELETE CASCADE,
+        badge_id INT REFERENCES badges(id) ON DELETE CASCADE,
+        awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
@@ -309,7 +375,6 @@ const resetAndInitializeDatabase = async () => {
     const passwordSales = await bcrypt.hash('Sales@1234', 10);
     const passwordManager = await bcrypt.hash('Manager@1234', 10);
     const passwordDriver = await bcrypt.hash('Driver@1234', 10);
-    const passwordAdmin = await bcrypt.hash('Admin@1234', 10);
 
     await pool.query(
       `INSERT INTO users (tenant_id, name, email, password_hash, role, admission, is_verified)
@@ -335,10 +400,12 @@ const resetAndInitializeDatabase = async () => {
       [tenant2.rows[0].id, 'Patrick Driver', 'driver@jengaplus.com', passwordDriver, 'Driver', 'ATC-2026-6112', true]
     );
 
+    const superAdminHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10);
     await pool.query(
       `INSERT INTO users (tenant_id, name, email, password_hash, role, admission, is_verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [tenant1.rows[0].id, 'Super Admin', 'admin@jengaplus.com', passwordAdmin, 'SuperAdmin', 'ATC-2026-0001', true]
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role, admission = EXCLUDED.admission, is_verified = EXCLUDED.is_verified, tenant_id = EXCLUDED.tenant_id`,
+      [null, SUPERADMIN_NAME, SUPERADMIN_EMAIL, superAdminHash, 'SuperAdmin', SUPERADMIN_ADMISSION, true]
     );
 
     console.log("✅ All Database tables dropped, recreated, and synchronized successfully from scratch on Neon!");
@@ -355,7 +422,7 @@ app.get('/', (req, res) => {
 });
 
 // TENANT API
-app.get('/api/tenants', async (req, res) => {
+app.get('/api/tenants', authenticateToken, authorizeRoles('SuperAdmin'), async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM tenants ORDER BY created_at DESC');
     res.json(result.rows);
@@ -364,14 +431,43 @@ app.get('/api/tenants', async (req, res) => {
   }
 });
 
-app.post('/api/tenants', async (req, res) => {
+app.post('/api/tenants', authenticateToken, authorizeRoles('SuperAdmin'), async (req, res) => {
   const { business_name, subdomain, subscription_status } = req.body;
   try {
     const tenant = await pool.query(
       'INSERT INTO tenants (business_name, subdomain, subscription_status) VALUES ($1, $2, $3) RETURNING *',
       [business_name, subdomain, subscription_status || 'Active']
     );
+    await recordAudit({ tenantId: tenant.rows[0].id, userId: req.user.id, action: 'create_tenant', entity: 'tenant', details: { business_name, subdomain, subscription_status: subscription_status || 'Active' } });
     res.json({ message: 'Tenant created successfully', tenant: tenant.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/tenants', authenticateToken, authorizeRoles('SuperAdmin'), async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, business_name, subdomain, subscription_status, created_at FROM tenants ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/admin/tenants/:tenantId/status', authenticateToken, authorizeRoles('SuperAdmin'), async (req, res) => {
+  const { tenantId } = req.params;
+  const { subscription_status } = req.body;
+  if (!subscription_status) return res.status(400).json({ error: 'subscription_status is required' });
+  const allowed = ['Active', 'Suspended', 'Inactive'];
+  if (!allowed.includes(subscription_status)) return res.status(400).json({ error: `subscription_status must be one of ${allowed.join(', ')}` });
+  try {
+    const updated = await pool.query(
+      'UPDATE tenants SET subscription_status = $1 WHERE id = $2 RETURNING *',
+      [subscription_status, tenantId]
+    );
+    if (updated.rows.length === 0) return res.status(404).json({ error: 'Tenant not found' });
+    await recordAudit({ tenantId: updated.rows[0].id, userId: req.user.id, action: 'update_tenant_status', entity: 'tenant', details: { subscription_status } });
+    res.json({ message: 'Tenant status updated', tenant: updated.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -405,6 +501,17 @@ const authorizeRoles = (...roles) => (req, res, next) => {
   next();
 };
 
+const recordAudit = async ({ tenantId = null, userId = null, action, entity, details = {} }) => {
+  try {
+    await pool.query(
+      `INSERT INTO audit_logs (tenant_id, user_id, action, entity, details) VALUES ($1, $2, $3, $4, $5)`,
+      [tenantId, userId, action, entity, JSON.stringify(details)]
+    );
+  } catch (auditErr) {
+    console.warn('Audit log failed:', auditErr.message);
+  }
+};
+
 app.post('/api/auth/register', async (req, res) => {
   const { business_name, subdomain, name, email, password, role, phone } = req.body;
   if (!business_name || !subdomain || !name || !email || !password) {
@@ -421,7 +528,16 @@ app.post('/api/auth/register', async (req, res) => {
     );
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const userRole = role || 'Boss';
+    // Allow only tenant roles to be created via registration UI
+    const allowedRoles = ['boss', 'salesperson', 'driver', 'customer'];
+    const normalized = role ? role.toString().trim().toLowerCase() : 'boss';
+    if (['admin', 'superadmin'].includes(normalized)) {
+      return res.status(400).json({ error: 'Cannot create Admin or SuperAdmin through the public registration flow.' });
+    }
+    if (!allowedRoles.includes(normalized)) {
+      return res.status(400).json({ error: 'Invalid role for registration. Only Boss, Salesperson, Driver, and Customer are allowed.' });
+    }
+    const userRole = normalized.charAt(0).toUpperCase() + normalized.slice(1);
     const admission = `ADM-${Date.now()}`;
 
     const user = await pool.query(
@@ -456,6 +572,12 @@ app.post('/api/auth/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    if (user.tenant_id) {
+      const tenantStatus = await pool.query('SELECT subscription_status FROM tenants WHERE id = $1', [user.tenant_id]);
+      if (tenantStatus.rows.length && tenantStatus.rows[0].subscription_status === 'Suspended') {
+        return res.status(403).json({ error: 'Tenant account is suspended. Contact SuperAdmin to reactivate.' });
+      }
     }
     const token = generateToken(user);
     const tenantResult = user.tenant_id ? await pool.query('SELECT business_name FROM tenants WHERE id = $1', [user.tenant_id]) : null;
@@ -580,6 +702,7 @@ app.post('/api/users', authenticateToken, authorizeRoles('SuperAdmin', 'Boss'), 
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, tenant_id, name, email, role, admission, is_verified`,
       [tenant_id, name, email, passwordHash, role, `ADM-${Date.now()}`, true]
     );
+    await recordAudit({ tenantId: tenant_id, userId: req.user.id, action: 'create_user', entity: 'user', details: { created_user_id: user.rows[0].id, name, email, role } });
     res.json({ message: 'User created successfully', user: user.rows[0] });
 
     (async () => {
@@ -623,7 +746,7 @@ app.put('/api/users/:userId', authenticateToken, authorizeRoles('SuperAdmin', 'B
     if (updatedUser.rows.length === 0) {
       return res.status(404).json({ error: 'User not found or tenant mismatch' });
     }
-
+    await recordAudit({ tenantId: tenant_id, userId: req.user.id, action: 'update_user', entity: 'user', details: { updated_user_id: updatedUser.rows[0].id, name, email, role } });
     res.json({ message: 'User updated successfully', user: updatedUser.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -650,6 +773,7 @@ app.delete('/api/users/:userId', authenticateToken, authorizeRoles('SuperAdmin',
     if (deletedUser.rows.length === 0) {
       return res.status(404).json({ error: 'User not found or tenant mismatch' });
     }
+    await recordAudit({ tenantId: tenant_id, userId: req.user.id, action: 'delete_user', entity: 'user', details: { deleted_user_id: deletedUser.rows[0].id, email: deletedUser.rows[0].email, role: deletedUser.rows[0].role } });
     res.json({ message: 'User deleted successfully', user: deletedUser.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -674,6 +798,7 @@ app.post('/api/products', async (req, res) => {
       'INSERT INTO products (tenant_id, category, name, sku, barcode, unit, price, stock_quantity) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
       [tenant_id, category, name, sku || null, barcode || null, unit, price, stock_quantity]
     );
+    await recordAudit({ tenantId: tenant_id, userId: req.user?.id || null, action: 'create_product', entity: 'product', details: { product_id: newProduct.rows[0].id, name, sku, barcode } });
     res.json({ message: 'Product added successfully', product: newProduct.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -692,6 +817,7 @@ app.put('/api/products/:productId', async (req, res) => {
     if (updatedProduct.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found or tenant mismatch' });
     }
+    await recordAudit({ tenantId: tenant_id, userId: req.user?.id || null, action: 'update_product', entity: 'product', details: { product_id: updatedProduct.rows[0].id, name, sku, barcode } });
     res.json({ message: 'Product updated successfully', product: updatedProduct.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -709,6 +835,7 @@ app.delete('/api/products/:productId', async (req, res) => {
     if (deletedProduct.rows.length === 0) {
       return res.status(404).json({ error: 'Product not found or tenant mismatch' });
     }
+    await recordAudit({ tenantId: tenant_id, userId: req.user?.id || null, action: 'delete_product', entity: 'product', details: { product_id: deletedProduct.rows[0].id, name: deletedProduct.rows[0].name } });
     res.json({ message: 'Product deleted successfully', product: deletedProduct.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1188,21 +1315,364 @@ app.get('/api/inventory/low-stock', authenticateToken, authorizeRoles('Manager',
   }
 });
 
-// Reports: Sales summary (daily, weekly, monthly)
-app.get('/api/reports/sales-summary', authenticateToken, authorizeRoles('Manager', 'Boss', 'SuperAdmin'), async (req, res) => {
+// Generate restock drafts for low-stock items (simple helper for frontend)
+app.get('/api/inventory/restock-drafts', authenticateToken, authorizeRoles('Manager', 'Boss', 'SuperAdmin'), async (req, res) => {
   try {
     const tenantId = req.query.tenantId || req.user.tenant_id;
-    const dailyQ = `SELECT COALESCE(SUM(total_amount),0) AS daily FROM sales WHERE tenant_id = $1 AND DATE(created_at) = CURRENT_DATE AND payment_status = 'Paid'`;
-    const weeklyQ = `SELECT COALESCE(SUM(total_amount),0) AS weekly FROM sales WHERE tenant_id = $1 AND created_at >= NOW() - INTERVAL '7 days' AND payment_status = 'Paid'`;
-    const monthlyQ = `SELECT COALESCE(SUM(total_amount),0) AS monthly FROM sales WHERE tenant_id = $1 AND date_trunc('month', created_at) = date_trunc('month', now()) AND payment_status = 'Paid'`;
+    const threshold = req.query.threshold ? Number(req.query.threshold) : undefined;
+    const drafts = await inventoryService.generateRestockDrafts(tenantId, threshold);
+    res.json(drafts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    const [dailyRes, weeklyRes, monthlyRes] = await Promise.all([
-      pool.query(dailyQ, [tenantId]),
-      pool.query(weeklyQ, [tenantId]),
-      pool.query(monthlyQ, [tenantId])
-    ]);
+// Create a restock alert (placeholder) - can be expanded to send SMS/email to supplier
+app.post('/api/alerts/restock', authenticateToken, authorizeRoles('Manager', 'Boss', 'SuperAdmin'), async (req, res) => {
+  try {
+    const { tenant_id, items } = req.body;
+    // items: [{ product_id, suggested_reorder }]
+    // Placeholder: persist alert or send notification via SMS service
+    // For now return a draft acknowledgement
+    // If supplier phone provided in body, attempt to notify
+    const supplierPhone = req.body.supplierPhone || process.env.ADMIN_PHONE;
+    if (supplierPhone && items && items.length > 0) {
+      try {
+        const textItems = items.map((it) => `${it.name || it.product_id} x ${it.suggested_reorder || ''}`).join(', ');
+        await smsService.sendSMS(supplierPhone, `Restock request: ${textItems}`);
+      } catch (smsErr) {
+        console.error('Failed to send restock SMS:', smsErr.message);
+      }
+    }
+    res.json({ message: 'Restock alert created', tenant_id: tenant_id || req.user.tenant_id, items: items || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    res.json({ daily: Number(dailyRes.rows[0].daily || 0), weekly: Number(weeklyRes.rows[0].weekly || 0), monthly: Number(monthlyRes.rows[0].monthly || 0) });
+// Trigger a restock check for a tenant: returns drafts and optionally notifies supplier/admin via SMS
+app.post('/api/inventory/run-restock-check', authenticateToken, authorizeRoles('Manager', 'Boss', 'SuperAdmin'), async (req, res) => {
+  try {
+    const tenantId = req.body.tenantId || req.user.tenant_id;
+    const threshold = req.body.threshold || undefined;
+    const supplierPhone = req.body.supplierPhone || process.env.ADMIN_PHONE;
+    const drafts = await inventoryService.generateRestockDrafts(tenantId, threshold);
+    // If drafts exist and supplierPhone provided, send consolidated SMS
+    if (drafts && drafts.length > 0 && supplierPhone) {
+      const textItems = drafts.map((d) => `${d.name} x ${d.suggested_reorder}`).join(', ');
+      try {
+        await smsService.sendSMS(supplierPhone, `Restock drafts for tenant ${tenantId}: ${textItems}`);
+      } catch (e) {
+        console.error('SMS notify error', e.message || e);
+      }
+    }
+    // Optionally create purchase orders when requested
+    let createdPO = null;
+    if (req.body.createPO) {
+      try {
+        createdPO = await inventoryService.createPurchaseOrdersFromDrafts(tenantId, drafts, req.body.supplier_id || null);
+      } catch (e) {
+        console.error('Create PO failed', e.message || e);
+      }
+    }
+    res.json({ drafts, notified: Boolean(drafts && drafts.length > 0 && supplierPhone), purchase_order: createdPO });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Import inventory CSV text payload (simpler than file-multipart). Expects CSV with header: category,name,unit,price,cost_price,stock_quantity,low_stock_threshold
+app.post('/api/inventory/import-csv', authenticateToken, authorizeRoles('Boss','Manager','SuperAdmin'), async (req, res) => {
+  const parseCsvLine = (line) => {
+    const matches = line.match(/("([^"]*(?:""[^"]*)*)"|[^,]+)/g) || [];
+    return matches.map((cell) => cell.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+  };
+
+  try {
+    const { tenantId: tenantIdBody, csvText } = req.body;
+    if (!csvText) return res.status(400).json({ error: 'csvText is required' });
+    const tenantId = Number(tenantIdBody || req.user.tenant_id);
+    if (!tenantId) return res.status(400).json({ error: 'tenantId is required' });
+
+    const text = String(csvText).replace(/^\uFEFF/, '').trim();
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    if (lines.length < 2) return res.status(400).json({ error: 'CSV must contain header and at least one row' });
+    if (lines.length > 350) return res.status(400).json({ error: 'CSV import is limited to 350 rows at a time for security and performance' });
+
+    const header = parseCsvLine(lines.shift()).map((h) => h.toLowerCase());
+    const requiredHeaders = ['category', 'name', 'unit', 'price', 'cost_price', 'stock_quantity', 'low_stock_threshold'];
+    const missing = requiredHeaders.filter((h) => !header.includes(h));
+    if (missing.length) return res.status(400).json({ error: `Missing required CSV headers: ${missing.join(', ')}` });
+
+    const created = [];
+    const updated = [];
+    const errors = [];
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (let index = 0; index < lines.length; index += 1) {
+        const rowLine = lines[index];
+        const cols = parseCsvLine(rowLine);
+        const row = header.reduce((acc, key, idx) => ({ ...acc, [key]: (cols[idx] || '').trim() }), {});
+
+        if (!row.name) {
+          errors.push({ row: index + 2, reason: 'Missing product name' });
+          continue;
+        }
+
+        const price = Number(row.price || 0);
+        const cost_price = Number(row.cost_price || 0);
+        const stock_quantity = parseInt(row.stock_quantity || '0', 10);
+        const low_stock_threshold = parseInt(row.low_stock_threshold || '10', 10);
+
+        if (Number.isNaN(price) || price < 0) {
+          errors.push({ row: index + 2, reason: 'Invalid price value' });
+          continue;
+        }
+        if (Number.isNaN(cost_price) || cost_price < 0) {
+          errors.push({ row: index + 2, reason: 'Invalid cost_price value' });
+          continue;
+        }
+        if (Number.isNaN(stock_quantity) || stock_quantity < 0) {
+          errors.push({ row: index + 2, reason: 'Invalid stock_quantity value' });
+          continue;
+        }
+        if (Number.isNaN(low_stock_threshold) || low_stock_threshold < 0) {
+          errors.push({ row: index + 2, reason: 'Invalid low_stock_threshold value' });
+          continue;
+        }
+
+        const category = row.category || 'General';
+        const unit = row.unit || 'Piece';
+        const sku = row.sku || null;
+        const barcode = row.barcode || null;
+
+        const existingRes = await client.query(
+          `SELECT id FROM products WHERE tenant_id = $1 AND (LOWER(name) = LOWER($2) OR sku = $3 OR barcode = $4) LIMIT 1`,
+          [tenantId, row.name, sku, barcode]
+        );
+
+        if (existingRes.rows.length > 0) {
+          const productId = existingRes.rows[0].id;
+          const updatedRes = await client.query(
+            `UPDATE products SET category = $1, unit = $2, price = $3, cost_price = $4, stock_quantity = $5, low_stock_threshold = $6, sku = $7, barcode = $8 WHERE id = $9 AND tenant_id = $10 RETURNING *`,
+            [category, unit, price, cost_price, stock_quantity, low_stock_threshold, sku, barcode, productId, tenantId]
+          );
+          updated.push({ row: index + 2, name: updatedRes.rows[0].name, action: 'updated' });
+          continue;
+        }
+
+        const insertedRes = await client.query(
+          `INSERT INTO products (tenant_id, category, name, sku, barcode, unit, price, cost_price, stock_quantity, low_stock_threshold)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+          [tenantId, category, row.name, sku, barcode, unit, price, cost_price, stock_quantity, low_stock_threshold]
+        );
+        created.push({ row: index + 2, name: insertedRes.rows[0].name, action: 'created' });
+      }
+      await client.query('COMMIT');
+    } catch (importErr) {
+      await client.query('ROLLBACK');
+      throw importErr;
+    } finally {
+      client.release();
+    }
+
+    await recordAudit({ tenantId, userId: req.user.id, action: 'import_inventory_csv', entity: 'products', details: { created: created.length, updated: updated.length, errors: errors.length } });
+    res.json({ message: 'Import complete', createdCount: created.length, updatedCount: updated.length, errors, created, updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Expose low-stock drafts as read-only (frontend polls this)
+app.get('/api/inventory/low/:tenantId', authenticateToken, authorizeRoles('Boss','Manager','SuperAdmin','Salesperson'), async (req, res) => {
+  try {
+    const tenantId = req.params.tenantId || req.user.tenant_id;
+    const threshold = req.query.threshold || undefined;
+    const drafts = await inventoryService.generateRestockDrafts(tenantId, threshold);
+    res.json({ drafts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cron-like endpoint: run restock check across all tenants and notify admin phone for each tenant
+app.post('/api/inventory/schedule-run', authenticateToken, authorizeRoles('SuperAdmin'), async (req, res) => {
+  try {
+    const tenantsRes = await pool.query('SELECT id, business_name FROM tenants');
+    const results = [];
+    for (const t of tenantsRes.rows) {
+      try {
+        const drafts = await inventoryService.generateRestockDrafts(t.id);
+        let notified = false;
+        if (drafts && drafts.length > 0 && process.env.ADMIN_PHONE) {
+          const textItems = drafts.map((d) => `${d.name} x ${d.suggested_reorder}`).join(', ');
+          await smsService.sendSMS(process.env.ADMIN_PHONE, `Tenant ${t.business_name} (${t.id}) restock: ${textItems}`);
+          notified = true;
+        }
+        results.push({ tenantId: t.id, draftsCount: drafts.length, notified });
+      } catch (e) {
+        console.error('Tenant restock error', t.id, e.message || e);
+        results.push({ tenantId: t.id, error: e.message || String(e) });
+      }
+    }
+    res.json({ results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// SuperAdmin overview: counts and quick health checks
+app.get('/api/admin/overview', authenticateToken, authorizeRoles('SuperAdmin'), async (req, res) => {
+  try {
+    const tenants = await pool.query('SELECT COUNT(*) FROM tenants');
+    const users = await pool.query('SELECT COUNT(*) FROM users');
+    const products = await pool.query('SELECT COUNT(*) FROM products');
+    const low = await pool.query('SELECT COUNT(*) FROM products WHERE stock_quantity::int <= COALESCE(low_stock_threshold::int, 10)');
+    const suspended = await pool.query("SELECT COUNT(*) FROM tenants WHERE subscription_status = 'Suspended'");
+    res.json({ tenants: Number(tenants.rows[0].count), users: Number(users.rows[0].count), products: Number(products.rows[0].count), low_stock: Number(low.rows[0].count), suspended_tenants: Number(suspended.rows[0].count) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/audit-logs', authenticateToken, authorizeRoles('SuperAdmin'), async (req, res) => {
+  try {
+    const logs = await pool.query(
+      `SELECT al.*, u.name AS user_name, u.email AS user_email
+       FROM audit_logs al
+       LEFT JOIN users u ON al.user_id = u.id
+       ORDER BY al.created_at DESC
+       LIMIT 200`
+    );
+    res.json(logs.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Optional background scheduler: when ENABLE_RESTOCK_SCHEDULER=true, periodically run restock checks
+if (process.env.ENABLE_RESTOCK_SCHEDULER === 'true') {
+  const intervalMinutes = Number(process.env.RESTOCK_SCHEDULE_MINUTES || 60);
+  console.log('Restock scheduler enabled. Running every', intervalMinutes, 'minutes');
+  setInterval(async () => {
+    try {
+      const tenantsRes = await pool.query('SELECT id, business_name FROM tenants');
+      for (const t of tenantsRes.rows) {
+        try {
+          const drafts = await inventoryService.generateRestockDrafts(t.id);
+          if (drafts && drafts.length > 0 && process.env.ADMIN_PHONE) {
+            const textItems = drafts.map((d) => `${d.name} x ${d.suggested_reorder}`).join(', ');
+            await smsService.sendSMS(process.env.ADMIN_PHONE, `Auto restock: Tenant ${t.business_name} (${t.id}) - ${textItems}`);
+          }
+        } catch (e) {
+          console.error('Scheduled restock error for tenant', t.id, e.message || e);
+        }
+      }
+    } catch (err) {
+      console.error('Scheduled restock master error', err.message || err);
+    }
+  }, Math.max(1000 * 60, intervalMinutes * 60 * 1000));
+}
+
+// Voice assistant command endpoint (placeholder)
+app.post('/api/voice/command', authenticateToken, authorizeRoles('Boss'), async (req, res) => {
+  try {
+    const { command } = req.body;
+    // Integrate with AI / STT in future. For now return a canned response.
+    res.json({ command, response: 'Voice command received (scaffold). Integrate AI assistant separately.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// LLM-assisted command endpoint: accepts text and routes to LLM if configured, otherwise returns canned response
+app.post('/api/voice/ask', authenticateToken, authorizeRoles('Boss','Manager','SuperAdmin'), async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'text is required' });
+    if (process.env.OPENAI_API_KEY) {
+      // Lightweight OpenAI call if key present
+      const resp = await require('axios').post('https://api.openai.com/v1/chat/completions', {
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [{ role: 'user', content: text }],
+        max_tokens: 400
+      }, { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` } });
+      const answer = resp.data.choices && resp.data.choices[0] && resp.data.choices[0].message ? resp.data.choices[0].message.content : 'No answer';
+      return res.json({ text, answer });
+    }
+    // Fallback canned
+    return res.json({ text, answer: `Echo: ${text}. (No LLM key configured)` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Gamification endpoints
+app.get('/api/gamification/badges/:userId', authenticateToken, authorizeRoles('Boss','Manager','SuperAdmin','Salesperson','Driver'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const badgesRes = await pool.query(
+      `SELECT b.*, ub.awarded_at FROM badges b
+       LEFT JOIN user_badges ub ON ub.badge_id = b.id AND ub.user_id = $1
+       WHERE b.tenant_id = $2`,
+      [userId, req.user.tenant_id]
+    );
+    res.json(badgesRes.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/gamification/award', authenticateToken, authorizeRoles('Boss','Manager','SuperAdmin'), async (req, res) => {
+  try {
+    const { userId, badgeCode } = req.body;
+    if (!userId || !badgeCode) return res.status(400).json({ error: 'userId and badgeCode are required' });
+    // Ensure badge exists or create default
+    let badge = await pool.query('SELECT * FROM badges WHERE tenant_id = $1 AND code = $2', [req.user.tenant_id, badgeCode]);
+    if (!badge.rows.length) {
+      badge = await pool.query('INSERT INTO badges (tenant_id, code, title, description, points) VALUES ($1,$2,$3,$4,$5) RETURNING *', [req.user.tenant_id, badgeCode, badgeCode, 'Awarded badge', 10]);
+    }
+    const badgeId = badge.rows[0].id;
+    await pool.query('INSERT INTO user_badges (tenant_id, user_id, badge_id) VALUES ($1,$2,$3)', [req.user.tenant_id, userId, badgeId]);
+    res.json({ message: 'Badge awarded', badge: badge.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reports: growth calculation for boss dashboard (monthly percent change)
+app.get('/api/reports/growth', authenticateToken, authorizeRoles('Boss', 'Manager', 'SuperAdmin'), async (req, res) => {
+  try {
+    const tenantId = req.query.tenantId || req.user.tenant_id;
+    // Sum of this month and previous month
+    const monthsQ = `SELECT
+      COALESCE(SUM(CASE WHEN date_trunc('month', created_at) = date_trunc('month', NOW()) THEN total_amount END),0) AS current_month,
+      COALESCE(SUM(CASE WHEN date_trunc('month', created_at) = date_trunc('month', NOW() - INTERVAL '1 month') THEN total_amount END),0) AS prev_month
+      FROM sales WHERE tenant_id = $1 AND payment_status = 'Paid'`;
+    const r = await pool.query(monthsQ, [tenantId]);
+    const cur = Number(r.rows[0].current_month || 0);
+    const prev = Number(r.rows[0].prev_month || 0);
+    let percent = 0;
+    if (prev === 0 && cur > 0) percent = 100;
+    else if (prev === 0 && cur === 0) percent = 0;
+    else percent = ((cur - prev) / prev) * 100;
+    res.json({ current_month: cur, previous_month: prev, percent_change: percent });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/reports/sales-summary', authenticateToken, authorizeRoles('Boss','Manager','SuperAdmin','Salesperson'), async (req, res) => {
+  try {
+    const tenantId = req.query.tenantId || req.user.tenant_id;
+    const q = `SELECT
+      COALESCE(SUM(CASE WHEN created_at >= NOW() - INTERVAL '1 day' THEN total_amount END),0) AS daily,
+      COALESCE(SUM(CASE WHEN created_at >= NOW() - INTERVAL '7 day' THEN total_amount END),0) AS weekly,
+      COALESCE(SUM(CASE WHEN date_trunc('month', created_at) = date_trunc('month', NOW()) THEN total_amount END),0) AS monthly
+      FROM sales WHERE tenant_id = $1 AND payment_status = 'Paid'`;
+    const r = await pool.query(q, [tenantId]);
+    res.json({ daily: Number(r.rows[0].daily || 0), weekly: Number(r.rows[0].weekly || 0), monthly: Number(r.rows[0].monthly || 0) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1812,55 +2282,6 @@ app.post('/api/customers/:customerId/payment', async (req, res) => {
   }
 });
 
-app.get('/api/customers/:tenantId/debts', async (req, res) => {
-  const { tenantId } = req.params;
-  try {
-    const debts = await pool.query(
-      `SELECT d.*, c.name AS customer_name, c.phone AS customer_phone
-       FROM customer_debts d
-       JOIN customers c ON c.id = d.customer_id
-       WHERE d.tenant_id = $1 AND d.status <> 'Paid'
-       ORDER BY d.due_date ASC`,
-      [tenantId]
-    );
-    res.json(debts.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/customers/:tenantId/ledger/:customerId', async (req, res) => {
-  const { tenantId, customerId } = req.params;
-  try {
-    const debts = await pool.query(
-      'SELECT * FROM customer_debts WHERE tenant_id = $1 AND customer_id = $2 ORDER BY created_at DESC',
-      [tenantId, customerId]
-    );
-    const payments = await pool.query(
-      'SELECT * FROM customer_payments WHERE tenant_id = $1 AND customer_id = $2 ORDER BY paid_at DESC',
-      [tenantId, customerId]
-    );
-    res.json({ debts: debts.rows, payments: payments.rows });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/customers/:tenantId/payments', async (req, res) => {
-  const { tenantId } = req.params;
-  try {
-    const payments = await pool.query(
-      `SELECT p.*, c.name AS customer_name FROM customer_payments p
-       JOIN customers c ON c.id = p.customer_id
-       WHERE p.tenant_id = $1 ORDER BY paid_at DESC`,
-      [tenantId]
-    );
-    res.json(payments.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Supplier & Procurement API
 app.get('/api/suppliers/:tenantId', async (req, res) => {
   const { tenantId } = req.params;
@@ -1880,6 +2301,7 @@ app.post('/api/suppliers', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
       [tenant_id, name, contact_person, phone, email, address, rating || 0, notes]
     );
+    await recordAudit({ tenantId: tenant_id, userId: req.user?.id || null, action: 'create_supplier', entity: 'supplier', details: { supplier_id: supplier.rows[0].id, name, phone } });
     res.json({ message: 'Supplier created successfully', supplier: supplier.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1976,6 +2398,7 @@ app.put('/api/purchase-orders/:orderId', async (req, res) => {
       [supplier_id, order_number, status || 'Pending', total_amount || 0, currency || 'TZS', expected_delivery_date, notes, orderId, tenant_id]
     );
     if (updatedOrder.rows.length === 0) return res.status(404).json({ error: 'Purchase order not found or tenant mismatch' });
+    await recordAudit({ tenantId: tenant_id, userId: req.user?.id || null, action: 'update_purchase_order', entity: 'purchase_order', details: { purchase_order_id: updatedOrder.rows[0].id, status, total_amount } });
     res.json({ message: 'Purchase order updated successfully', purchase_order: updatedOrder.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1988,6 +2411,7 @@ app.delete('/api/purchase-orders/:orderId', async (req, res) => {
   try {
     const deletedOrder = await pool.query('DELETE FROM purchase_orders WHERE id = $1 AND tenant_id = $2 RETURNING *', [orderId, tenant_id]);
     if (deletedOrder.rows.length === 0) return res.status(404).json({ error: 'Purchase order not found or tenant mismatch' });
+    await recordAudit({ tenantId: tenant_id, userId: req.user?.id || null, action: 'delete_purchase_order', entity: 'purchase_order', details: { purchase_order_id: deletedOrder.rows[0].id, order_number: deletedOrder.rows[0].order_number } });
     res.json({ message: 'Purchase order deleted successfully', purchase_order: deletedOrder.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });

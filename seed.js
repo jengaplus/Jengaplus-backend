@@ -1,12 +1,12 @@
-const { Pool } = require('pg');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const pool = require('./db');
 
-// Configure PostgreSQL connection using DATABASE_URL (Neon)
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME || 'Super Admin';
+const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'admin@jengaplus.com';
+const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || 'Admin@1234';
+const SUPERADMIN_ADMISSION = process.env.SUPERADMIN_ADMISSION || `ADM-${Date.now()}`;
 
 async function seed() {
   try {
@@ -46,6 +46,15 @@ async function seed() {
         [tenant.id, u.name, u.email, hashed, u.role, true]
       );
     }
+
+    // Ensure a SuperAdmin account exists and uses secure env credentials
+    const superAdminHash = await bcrypt.hash(SUPERADMIN_PASSWORD, 10);
+    await pool.query(
+      `INSERT INTO users (tenant_id, name, email, password_hash, role, admission, is_verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role, admission = EXCLUDED.admission, is_verified = EXCLUDED.is_verified, tenant_id = EXCLUDED.tenant_id`,
+      [null, SUPERADMIN_NAME, SUPERADMIN_EMAIL, superAdminHash, 'SuperAdmin', SUPERADMIN_ADMISSION, true]
+    );
 
     // Projects: We'll store as 'suppliers' table or products? There's no explicit projects table. Create a projects-like dataset using 'purchase_orders' with project reference in notes and create a simple 'projects' helper table.
     console.log('Creating projects table (helper) and sample projects...');
@@ -96,18 +105,25 @@ async function seed() {
     for (const m of materials) {
       const exist = await pool.query(`SELECT id FROM products WHERE tenant_id = $1 AND name = $2`, [tenant.id, m.name]);
       if (exist.rows.length) {
-        console.log(`Product exists, skipping: ${m.name}`);
-        continue;
+        await pool.query(
+          `UPDATE products
+           SET category = $1,
+               unit = $2,
+               price = $3,
+               cost_price = $4,
+               stock_quantity = $5,
+               low_stock_threshold = $6
+           WHERE id = $7`,
+          [m.category, m.unit, m.price, m.cost_price || 0, m.stock, 10, exist.rows[0].id]
+        );
+        console.log(`Product updated: ${m.name}`);
+      } else {
+        await pool.query(
+          `INSERT INTO products (tenant_id, category, name, unit, price, cost_price, stock_quantity, low_stock_threshold) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [tenant.id, m.category, m.name, m.unit, m.price, m.cost_price || 0, m.stock, 10]
+        );
       }
-      await pool.query(
-        `INSERT INTO products (tenant_id, category, name, unit, price, cost_price, stock_quantity, low_stock_threshold) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [tenant.id, m.category, m.name, m.unit, m.price, m.cost_price || 0, m.stock, 10]
-      );
     }
-      else {
-        // Ensure cost_price is set/updated for existing products
-        await pool.query('UPDATE products SET cost_price = $1 WHERE id = $2', [m.cost_price || 0, exist.rows[0].id]);
-      }
 
     // Suppliers
     console.log('Creating sample suppliers...');

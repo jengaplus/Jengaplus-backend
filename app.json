@@ -11,12 +11,15 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#020814"
       },
-      "package": "com.jengaplustpsteam.jengaplus"
+      "package": "com.jengaplus.appv2"
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     },
     "plugins": [
       [
@@ -32,11 +35,11 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
+      "apiBase": "https://jengaplus-backend.onrender.com",
       "eas": {
-        "projectId": "52d71363-b8cd-4677-a1ed-2d2e3c29143f"
-      },
-      "apiBase": "https://jengaplus-backend.onrender.com"
+        "projectId": "b1d39f00-ebb2-472a-852d-05b0bfdc4181"
+      }
     },
-    "owner": "jengaplustps-team"
+    "owner": "jengapluslimited"
   }
 }

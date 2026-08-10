@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, SafeAreaView, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, Dimensions, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import Constants from 'expo-constants';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -11,9 +12,11 @@ import * as FileSystem from 'expo-file-system';
 
 const appApiBase = String(Constants?.expoConfig?.extra?.apiBase || Constants?.manifest?.extra?.apiBase || 'https://jengaplus-backend.onrender.com');
 const API_BASE = `${appApiBase.replace(/\/$/, '')}/api`;
+const allowedRegistrationRoles = ['Boss', 'Salesperson', 'Driver', 'Customer'];
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Login'); // Login, Register, ForgotPassword, ResetPassword, VerifyOTP, BossDashboard, SalesDashboard, Customers, AddCustomer, RecordDebt, Expenses, AddExpense, FinanceSummary, DashboardSummary, Vehicles, AddVehicle, Deliveries, AddDelivery, Suppliers, AddSupplier, EditSupplier, PurchaseOrders, AddPurchaseOrder, EditPurchaseOrder, Attendance, AddAttendance, EditAttendance, Users, EditUser
+  const [initializing, setInitializing] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authToken, setAuthToken] = useState(null);
@@ -57,8 +60,17 @@ export default function App() {
   const [deliveryForm, setDeliveryForm] = useState({ driver_id: '', vehicle_id: '', customer_name: '', customer_address: '', destination: '', status: 'Pending', route_start: '', route_end: '', distance_km: '0', eta: '' });
 
   const [suppliers, setSuppliers] = useState([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInitializing(false);
+    }, 2200);
+    return () => clearTimeout(timer);
+  }, []);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [supplierForm, setSupplierForm] = useState({ name: '', contact_person: '', phone: '', email: '', address: '', rating: '0', notes: '' });
+  const [selectedTenant, setSelectedTenant] = useState(null);
+  const [tenantForm, setTenantForm] = useState({ business_name: '', subdomain: '', subscription_status: 'Active' });
 
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState(null);
@@ -1344,6 +1356,11 @@ export default function App() {
     }
   };
 
+  const handleLogin = () => {
+    console.log('Login button pressed');
+    loginUser();
+  };
+
   const registerUser = async () => {
     if (!registerForm.business_name || !registerForm.subdomain || !registerForm.name || !registerForm.email || !registerForm.password) {
       return Alert.alert('Validation', 'All registration fields are required.');
@@ -1606,21 +1623,43 @@ export default function App() {
   return (
     <SafeAreaView
       style={styles.mainContainer}
-      onStartShouldSetResponderCapture={() => true}
-      onResponderGrant={handleUserActivity}
       onTouchStart={handleUserActivity}
     >
-      {currentScreen === 'Login' && (
-        <View style={styles.loginScreenWrapper}>
-          <View style={styles.loginBackdrop} />
+      {initializing ? (
+        <View style={styles.startupScreen}>
+          <View style={styles.startupCard}>
+            <Text style={styles.startupBadgeText}>PROJECT LAUNCH</Text>
+            <View style={styles.startupLogoFrame}>
+              <Image
+                source={require('./assets/icon.png')}
+                style={styles.startupLogo}
+                resizeMode="contain"
+              />
+              <View style={styles.startupLogoRim} pointerEvents="none" />
+            </View>
+            <Text style={styles.startupLabel}>JENGA PLUS</Text>
+            <View style={styles.startupFeatureBadgeCombined}>
+              <Text style={styles.startupFeatureText}>🏗️ Crane · 🪖 Helmet · Project launch</Text>
+            </View>
+            <View style={styles.startupProgressBar}>
+              <View style={styles.startupProgressFill} />
+            </View>
+            <Text style={styles.startupHint}>Loading project blueprint & workspace tools…</Text>
+          </View>
+        </View>
+      ) : (
+        currentScreen === 'Login' && (
+          <View style={styles.loginScreenWrapper}>
+            <View style={styles.loginBackdrop} />
           <View style={styles.loginGradientOverlay} />
           <View style={styles.loginWatermarkContainer} pointerEvents="none">
             <Text style={styles.loginWatermark}>CONSTRUCTION</Text>
           </View>
 
           <View style={styles.loginCard}>
+            
             <Text style={styles.brandTitle}>JENGA PLUS</Text>
-            <Text style={styles.brandSubtitle}>SaaS Construction Materials Framework Management</Text>
+            <Text style={styles.brandSubtitle}>Construction materials workflow, simplified.</Text>
 
             <View style={styles.fieldRow}>
               <Text style={styles.fieldIcon}>📧</Text>
@@ -1647,7 +1686,14 @@ export default function App() {
               />
             </View>
 
-            <TouchableOpacity style={styles.loginButton} onPress={loginUser}>
+            <TouchableOpacity
+              style={styles.loginButton}
+              activeOpacity={0.7}
+              onPress={() => {
+                console.log('Login button pressed');
+                handleLogin();
+              }}
+            >
               <Text style={styles.loginButtonText}>Login</Text>
             </TouchableOpacity>
 
@@ -1662,7 +1708,7 @@ export default function App() {
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      ))} 
 
       {currentScreen === 'Register' && (
         <ScrollView style={styles.dashboardContainer}>
@@ -3640,6 +3686,137 @@ const styles = StyleSheet.create({
   loginWatermarkContainer: { position: 'absolute', top: '35%', left: 0, right: 0, alignItems: 'center', opacity: 0.08 },
   loginWatermark: { fontSize: 72, fontWeight: '900', color: '#FFFFFF', letterSpacing: 14, textTransform: 'uppercase' },
   loginCard: { width: '100%', maxWidth: 420, backgroundColor: 'rgba(12, 20, 42, 0.88)', borderRadius: 28, padding: 28, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)', shadowColor: '#0B2444', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.26, shadowRadius: 32, elevation: 18 },
+  startupScreen: { flex: 1, backgroundColor: '#020814', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  startupCard: { width: '100%', maxWidth: 420, backgroundColor: 'rgba(10, 18, 36, 0.96)', borderRadius: 28, padding: 26, borderWidth: 1, borderColor: 'rgba(109, 116, 129, 0.18)', shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.22, shadowRadius: 28, elevation: 16, alignItems: 'center' },
+  startupBadgeText: { color: '#FACC15', fontSize: 12, fontWeight: '800', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 18 },
+  startupLabel: { color: '#D1D5DB', fontSize: 22, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 8, marginBottom: 10, textAlign: 'center' },
+  startupFeatureBadgeCombined: { alignSelf: 'center', backgroundColor: 'rgba(250, 204, 21, 0.12)', borderColor: 'rgba(250, 204, 21, 0.34)', borderWidth: 1, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10, marginBottom: 16, shadowColor: '#FACC15', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 12 },
+  startupFeatureText: { color: '#FACC15', fontSize: 13, fontWeight: '900', letterSpacing: 0.6 },
+  startupLogoFrame: { width: 220, height: 220, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  startupLogoRim: { position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, borderRadius: 32, borderWidth: 5, borderColor: 'rgba(59,130,246,0.9)', opacity: 0.95, shadowColor: '#0EA5FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 20, elevation: 16 },
+  
+  startupProgressBar: { width: '100%', height: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginTop: 10, marginBottom: 10 },
+  startupProgressFill: { width: '45%', height: '100%', backgroundColor: '#3B82F6', borderRadius: 12 },
+  startupHint: { color: '#94A3B8', fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 20, maxWidth: 340 },
+  loginLogoWrapper: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  loginLogoCard: {
+    width: 260,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.24,
+    shadowRadius: 26,
+    elevation: 18,
+    overflow: 'hidden'
+  },
+  loginLogoCodeHeader: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  codeWindowBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(12, 18, 34, 0.98)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  codeWindowDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: '#FACC15',
+    marginRight: 6,
+  },
+  startupTerminal: {
+    marginTop: 18,
+    borderRadius: 24,
+    backgroundColor: 'rgba(9, 16, 32, 0.94)',
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.12)',
+    overflow: 'hidden',
+    alignItems: 'center',
+    paddingBottom: 18,
+  },
+  startupStatus: {
+    color: '#E2E8F0',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+  },
+  startupLogo: {
+    width: 210,
+    height: 210,
+    marginVertical: 16,
+  },
+  loginLogoCodeText: {
+    color: '#8ab4f8',
+    fontFamily: 'Courier',
+    fontSize: 12,
+    textAlign: 'center'
+  },
+  loginLogo: {
+    width: 240,
+    height: 240,
+    borderRadius: 26,
+    marginVertical: 16,
+  },
+  loginLogoLarge: {
+    width: 220,
+    height: 220,
+    borderRadius: 24,
+    marginVertical: 14,
+  },
+  loginLogoMetaRow: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    marginTop: 16,
+  },
+  loginLogoCaption: {
+    color: '#CBD5E1',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 18,
+    opacity: 0.85,
+    maxWidth: '84%',
+  },
+  loginLogoCodeFooter: {
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  loginLogoFooterText: {
+    color: '#dbeafe',
+    fontSize: 13,
+    fontWeight: '700'
+  },
   brandTitle: { fontSize: 34, fontWeight: '900', color: '#F8FAFC', letterSpacing: 3, textAlign: 'center' },
   brandSubtitle: { fontSize: 13, color: '#A8B8D2', textAlign: 'center', marginTop: 8, marginBottom: 28, lineHeight: 22, letterSpacing: 0.4 },
   formContainer: { backgroundColor: 'rgba(9, 18, 36, 0.96)', padding: 26, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.14)' },

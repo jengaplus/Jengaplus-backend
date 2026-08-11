@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, Dimensions, Image } from 'react-native';
+import { Animated, StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import Constants from 'expo-constants';
@@ -17,6 +17,9 @@ const allowedRegistrationRoles = ['Boss', 'Salesperson', 'Driver', 'Customer'];
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Login'); // Login, Register, ForgotPassword, ResetPassword, VerifyOTP, BossDashboard, SalesDashboard, Customers, AddCustomer, RecordDebt, Expenses, AddExpense, FinanceSummary, DashboardSummary, Vehicles, AddVehicle, Deliveries, AddDelivery, Suppliers, AddSupplier, EditSupplier, PurchaseOrders, AddPurchaseOrder, EditPurchaseOrder, Attendance, AddAttendance, EditAttendance, Users, EditUser
   const [initializing, setInitializing] = useState(true);
+  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const progressWidth = useRef(new Animated.Value(0)).current;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authToken, setAuthToken] = useState(null);
@@ -62,9 +65,27 @@ export default function App() {
   const [suppliers, setSuppliers] = useState([]);
 
   useEffect(() => {
+    Animated.parallel([
+      Animated.timing(logoScale, {
+        toValue: 1,
+        duration: 1800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 1400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(progressWidth, {
+        toValue: 1,
+        duration: 2200,
+        useNativeDriver: false,
+      }),
+    ]).start();
+
     const timer = setTimeout(() => {
       setInitializing(false);
-    }, 2200);
+    }, 2600);
     return () => clearTimeout(timer);
   }, []);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
@@ -1628,21 +1649,35 @@ export default function App() {
       {initializing ? (
         <View style={styles.startupScreen}>
           <View style={styles.startupCard}>
-            <Text style={styles.startupBadgeText}>PROJECT LAUNCH</Text>
-            <View style={styles.startupLogoFrame}>
+            <Animated.View style={[styles.startupLogoFrame, {
+              transform: [{ scale: logoScale }],
+              opacity: logoOpacity,
+            }]}
+            >
               <Image
                 source={require('./assets/icon.png')}
                 style={styles.startupLogo}
                 resizeMode="contain"
               />
               <View style={styles.startupLogoRim} pointerEvents="none" />
-            </View>
-            <Text style={styles.startupLabel}>JENGA PLUS</Text>
+            </Animated.View>
+            <Text style={styles.startupTitle}>JENGA PLUS</Text>
+            <Text style={styles.startupBadgeText}>PROJECT LAUNCH</Text>
             <View style={styles.startupFeatureBadgeCombined}>
               <Text style={styles.startupFeatureText}>🏗️ Crane · 🪖 Helmet · Project launch</Text>
             </View>
             <View style={styles.startupProgressBar}>
-              <View style={styles.startupProgressFill} />
+              <Animated.View
+                style={[
+                  styles.startupProgressFill,
+                  {
+                    width: progressWidth.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  },
+                ]}
+              />
             </View>
             <Text style={styles.startupHint}>Loading project blueprint & workspace tools…</Text>
           </View>
@@ -3688,9 +3723,10 @@ const styles = StyleSheet.create({
   loginCard: { width: '100%', maxWidth: 420, backgroundColor: 'rgba(12, 20, 42, 0.88)', borderRadius: 28, padding: 28, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)', shadowColor: '#0B2444', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.26, shadowRadius: 32, elevation: 18 },
   startupScreen: { flex: 1, backgroundColor: '#020814', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
   startupCard: { width: '100%', maxWidth: 420, backgroundColor: 'rgba(10, 18, 36, 0.96)', borderRadius: 28, padding: 26, borderWidth: 1, borderColor: 'rgba(109, 116, 129, 0.18)', shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.22, shadowRadius: 28, elevation: 16, alignItems: 'center' },
-  startupBadgeText: { color: '#FACC15', fontSize: 12, fontWeight: '800', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 18 },
-  startupLabel: { color: '#D1D5DB', fontSize: 22, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase', marginTop: 8, marginBottom: 10, textAlign: 'center' },
-  startupFeatureBadgeCombined: { alignSelf: 'center', backgroundColor: 'rgba(250, 204, 21, 0.12)', borderColor: 'rgba(250, 204, 21, 0.34)', borderWidth: 1, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10, marginBottom: 16, shadowColor: '#FACC15', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 12 },
+  startupBadgeText: { color: '#FACC15', fontSize: 14, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase', marginTop: 12, marginBottom: 16, opacity: 0.96 },
+  startupTitle: { color: '#F8FAFC', fontSize: 48, fontWeight: '900', letterSpacing: 5, textTransform: 'uppercase', marginTop: 20, marginBottom: 8, textAlign: 'center', textShadowColor: 'rgba(96, 165, 250, 0.35)', textShadowOffset: { width: 0, height: 6 }, textShadowRadius: 18 },
+  startupLabel: { color: '#D1D5DB', fontSize: 18, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center', opacity: 0.88 },
+  startupFeatureBadgeCombined: { alignSelf: 'center', backgroundColor: 'rgba(250, 204, 21, 0.12)', borderColor: 'rgba(250, 204, 21, 0.34)', borderWidth: 1, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 16, shadowColor: '#FACC15', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 12 },
   startupFeatureText: { color: '#FACC15', fontSize: 13, fontWeight: '900', letterSpacing: 0.6 },
   startupLogoFrame: { width: 220, height: 220, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   startupLogoRim: { position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, borderRadius: 32, borderWidth: 5, borderColor: 'rgba(59,130,246,0.9)', opacity: 0.95, shadowColor: '#0EA5FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 20, elevation: 16 },

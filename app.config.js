@@ -9,15 +9,32 @@ const splashImage = SPLASH_CANDIDATES.find((file) =>
 );
 
 module.exports = ({ config }) => {
-  return {
-    ...config,
-    expo: {
-      ...config.expo,
-      splash: {
-        image: splashImage ? `./assets/${splashImage}` : './assets/splash-icon.png',
-        resizeMode: 'contain',
-        backgroundColor: '#ffffff',
+  const baseConfig = config.expo || config;
+  const extraConfig = baseConfig.extra || {};
+  const easConfig = extraConfig.eas || {};
+
+  const expoConfig = {
+    ...baseConfig,
+    extra: {
+      ...extraConfig,
+      eas: {
+        ...easConfig,
+        projectId: 'b1d39f00-ebb2-472a-852d-05b0bfdc4181',
       },
     },
+    splash: {
+      image: splashImage ? `./assets/${splashImage}` : './assets/splash-icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#ffffff',
+    },
   };
+
+  if (config.expo) {
+    return {
+      ...config,
+      expo: expoConfig,
+    };
+  }
+
+  return expoConfig;
 };

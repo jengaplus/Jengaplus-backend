@@ -16,6 +16,11 @@
       },
       "package": "com.jengaplus.appv2"
     },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "plugins": [
       [
         "expo-build-properties",

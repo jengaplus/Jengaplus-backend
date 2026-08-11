@@ -1,11 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 
-module.exports = ({ config }) => {
-  const assetDir = path.resolve(__dirname, 'assets');
-  const candidateImages = ['jengaplus_enhanced.png', 'splash-icon.png'];
-  const splashImage = candidateImages.find((file) => fs.existsSync(path.join(assetDir, file)));
+const ASSET_DIR = path.resolve(__dirname, 'assets');
+const SPLASH_CANDIDATES = ['jengaplus_enhanced.png', 'splash-icon.png'];
 
+const splashImage = SPLASH_CANDIDATES.find((file) =>
+  fs.existsSync(path.join(ASSET_DIR, file))
+);
+
+module.exports = ({ config }) => {
   return {
     ...config,
     expo: {

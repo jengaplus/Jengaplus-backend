@@ -23,9 +23,8 @@ module.exports = ({ config }) => {
       },
     },
     splash: {
-      image: splashImage ? `./assets/${splashImage}` : './assets/splash-icon.png',
-      resizeMode: 'contain',
-      backgroundColor: '#ffffff',
+      ...(baseConfig.splash || {}),
+      image: splashImage ? `./assets/${splashImage}` : (baseConfig.splash?.image || './assets/splash-icon.png'),
     },
   };
 

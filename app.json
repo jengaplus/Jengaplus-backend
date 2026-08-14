@@ -3,36 +3,72 @@
     "name": "Jengaplus",
     "slug": "jengaplus",
     "version": "1.0.0",
+    "scheme": "jengaplus",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/jengaplus_enhanced.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#020814"
+    },
+    "userInterfaceStyle": "dark",
+    "runtimeVersion": "1.0.0",
+    "newArchEnabled": false,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.jengaplus.appv2",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Allow Jengaplus to access your microphone for voice commands",
+        "NSCameraUsageDescription": "Allow Jengaplus to access your camera for barcode scanning"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#020814"
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.jengaplus.appv2"
+      "package": "com.jengaplus.appv2",
+      "versionCode": 1,
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "CAMERA",
+        "INTERNET",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "VIBRATE",
+        "RECORD_AUDIO",
+        "SYSTEM_ALERT_WINDOW"
+      ]
     },
     "plugins": [
       [
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          },
+          "ios": {
+            "deploymentTarget": "13.4"
           }
         }
       ]
     ],
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static"
     },
     "extra": {
       "apiBase": "https://jengaplus-backend.onrender.com",
       "eas": {
         "projectId": "b1d39f00-ebb2-472a-852d-05b0bfdc4181"
+      },
+      "router": {
+        "origin": false
       }
     },
     "owner": "jengapluslimited"

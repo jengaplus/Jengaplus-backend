@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, Dimensions, Image } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, ScrollView, Dimensions, Image } from 'react-native';
+import * as Animatable from 'react-native-animatable';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import Constants from 'expo-constants';
@@ -17,9 +18,6 @@ const allowedRegistrationRoles = ['Boss', 'Salesperson', 'Driver', 'Customer'];
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Login'); // Login, Register, ForgotPassword, ResetPassword, VerifyOTP, BossDashboard, SalesDashboard, Customers, AddCustomer, RecordDebt, Expenses, AddExpense, FinanceSummary, DashboardSummary, Vehicles, AddVehicle, Deliveries, AddDelivery, Suppliers, AddSupplier, EditSupplier, PurchaseOrders, AddPurchaseOrder, EditPurchaseOrder, Attendance, AddAttendance, EditAttendance, Users, EditUser
   const [initializing, setInitializing] = useState(true);
-  const logoScale = useRef(new Animated.Value(0.8)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const progressWidth = useRef(new Animated.Value(0)).current;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authToken, setAuthToken] = useState(null);
@@ -37,85 +35,134 @@ export default function App() {
   const [scanResult, setScanResult] = useState(null);
   const [cameraFacing, setCameraFacing] = useState('back');
 
-  const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers] = useState([
+    { id: 1, name: 'Marco Materials Ltd', phone: '+255755123456', address: 'Dar es Salaam', category: 'Wholesale', credit_limit: '50000000', loyalty_tier: 'Gold', created_at: '2024-01-15' },
+    { id: 2, name: 'TanzaBuild Construction', phone: '+255756234567', address: 'Morogoro', category: 'Contractor', credit_limit: '30000000', loyalty_tier: 'Silver', created_at: '2024-02-10' },
+    { id: 3, name: 'Arusha Retail Store', phone: '+255757345678', address: 'Arusha', category: 'Retail', credit_limit: '15000000', loyalty_tier: 'Bronze', created_at: '2024-03-05' },
+    { id: 4, name: 'Mbeya Hardware Hub', phone: '+255758456789', address: 'Mbeya', category: 'Retail', credit_limit: '8000000', loyalty_tier: 'Bronze', created_at: '2024-03-20' },
+    { id: 5, name: 'Kilimanjaro Developers', phone: '+255759567890', address: 'Moshi', category: 'Contractor', credit_limit: '25000000', loyalty_tier: 'Silver', created_at: '2024-04-12' }
+  ]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerForm, setCustomerForm] = useState({ name: '', phone: '', address: '', category: 'Retail', credit_limit: '0', loyalty_tier: 'Bronze' });
   const [debtAmount, setDebtAmount] = useState('0');
   const [debtDueDate, setDebtDueDate] = useState('');
 
-  const [products, setProducts] = useState([]);
-  const [sales, setSales] = useState([]);
+  const [products, setProducts] = useState([
+    { id: 1, category: 'Cement', name: 'Dangote Cement 50kg', unit: 'Bag', price: '18000', cost_price: '14000', stock_quantity: '245', low_stock_threshold: '50', sku: 'DANG-CEMENT-50', created_at: '2024-01-10' },
+    { id: 2, category: 'Cement', name: 'Heidelberg Cement 50kg', unit: 'Bag', price: '17500', cost_price: '13500', stock_quantity: '180', low_stock_threshold: '50', sku: 'HEID-CEMENT-50', created_at: '2024-01-12' },
+    { id: 3, category: 'Steel', name: '10mm Reinforcement Steel', unit: 'kg', price: '2500', cost_price: '1800', stock_quantity: '5420', low_stock_threshold: '500', sku: 'STEEL-10MM', created_at: '2024-01-15' },
+    { id: 4, category: 'Steel', name: '12mm Reinforcement Steel', unit: 'kg', price: '2700', cost_price: '1950', stock_quantity: '4850', low_stock_threshold: '500', sku: 'STEEL-12MM', created_at: '2024-01-15' },
+    { id: 5, category: 'Brick', name: 'Common Brick', unit: 'Piece', price: '800', cost_price: '500', stock_quantity: '12500', low_stock_threshold: '1000', sku: 'BRICK-COMMON', created_at: '2024-01-20' },
+    { id: 6, category: 'Paint', name: 'Premium Acrylic Paint White 20L', unit: 'Tin', price: '85000', cost_price: '55000', stock_quantity: '42', low_stock_threshold: '10', sku: 'PAINT-ACRYLIC-20L', created_at: '2024-02-05' },
+    { id: 7, category: 'Sand', name: 'Sharp Sand', unit: 'Cubic meter', price: '35000', cost_price: '22000', stock_quantity: '320', low_stock_threshold: '50', sku: 'SAND-SHARP', created_at: '2024-01-25' },
+    { id: 8, category: 'Timber', name: 'Pine Timber 2x4', unit: 'Piece', price: '12000', cost_price: '8000', stock_quantity: '156', low_stock_threshold: '30', sku: 'TIMBER-2X4', created_at: '2024-02-10' }
+  ]);
+  const [sales, setSales] = useState([
+    { id: 1, invoice_number: 'INV-2024-0001', customer_name: 'Marco Materials Ltd', customer_id: 1, total_amount: '450000', payment_status: 'Paid', payment_method: 'Bank Transfer', created_at: '2024-03-15', items: 5 },
+    { id: 2, invoice_number: 'INV-2024-0002', customer_name: 'TanzaBuild Construction', customer_id: 2, total_amount: '1200000', payment_status: 'Paid', payment_method: 'Cash', created_at: '2024-03-18', items: 8 },
+    { id: 3, invoice_number: 'INV-2024-0003', customer_name: 'Arusha Retail Store', customer_id: 3, total_amount: '285000', payment_status: 'Pending', payment_method: 'Credit', created_at: '2024-03-20', items: 3 },
+    { id: 4, invoice_number: 'INV-2024-0004', customer_name: 'Mbeya Hardware Hub', customer_id: 4, total_amount: '165000', payment_status: 'Paid', payment_method: 'Mobile Money', created_at: '2024-03-22', items: 2 }
+  ]);
   const [saleForm, setSaleForm] = useState({ customer_name: '', customer_id: '', invoice_number: '', product_id: '', quantity: '1', unit_price: '0', total_amount: '0', discount_amount: '0', tax_amount: '0', payment_method: 'Cash', payment_status: 'Paid', due_date: '', notes: '' });
   const [productForm, setProductForm] = useState({ category: '', name: '', unit: '', price: '0', stock_quantity: '0', low_stock_threshold: '10' });
   const [productSelection, setProductSelection] = useState(null);
   const [selectedSale, setSelectedSale] = useState(null);
   const [selectedDelivery, setSelectedDelivery] = useState(null);
   const [deliveryStatusForm, setDeliveryStatusForm] = useState({ status: '', proof_of_delivery_url: '' });
-  const [customerDebts, setCustomerDebts] = useState([]);
+  const [customerDebts, setCustomerDebts] = useState([
+    { id: 1, customer_id: 3, customer_name: 'Arusha Retail Store', amount: '142500', due_date: '2024-04-05', status: 'Overdue', days_overdue: 0, created_at: '2024-03-20', notes: 'Invoice INV-2024-0003' },
+    { id: 2, customer_id: 2, customer_name: 'TanzaBuild Construction', amount: '0', due_date: '2024-03-25', status: 'Paid', days_overdue: 0, created_at: '2024-03-18', notes: 'Fully paid on time' },
+    { id: 3, customer_id: 5, customer_name: 'Kilimanjaro Developers', amount: '385000', due_date: '2024-04-10', status: 'Pending', days_overdue: 0, created_at: '2024-03-15', notes: 'New customer, first purchase' }
+  ]);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [ledgerEntries, setLedgerEntries] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ customer_id: '', debt_id: '', amount: '0', payment_method: 'Cash', notes: '' });
 
-  const [vehicles, setVehicles] = useState([]);
+  const [vehicles, setVehicles] = useState([
+    { id: 1, plate: 'TZA-001', type: 'Truck', capacity: '5000kg', status: 'Active', assigned_driver_id: '1', color: 'White', year: '2021', last_service: '2024-03-10' },
+    { id: 2, plate: 'TZA-002', type: 'Van', capacity: '2000kg', status: 'Active', assigned_driver_id: '2', color: 'Blue', year: '2022', last_service: '2024-03-05' },
+    { id: 3, plate: 'TZA-003', type: 'Pickup', capacity: '1500kg', status: 'In Maintenance', assigned_driver_id: null, color: 'Red', year: '2020', last_service: '2024-02-20' },
+    { id: 4, plate: 'TZA-004', type: 'Truck', capacity: '5000kg', status: 'Active', assigned_driver_id: '3', color: 'White', year: '2023', last_service: '2024-03-12' }
+  ]);
   const [vehicleForm, setVehicleForm] = useState({ plate: '', type: '', capacity: '', status: 'Active', assigned_driver_id: '' });
 
-  const [deliveries, setDeliveries] = useState([]);
+  const [deliveries, setDeliveries] = useState([
+    { id: 1, driver_id: 1, vehicle_id: 1, customer_name: 'Marco Materials Ltd', customer_address: 'Dar es Salaam', destination: 'Port Area', status: 'Delivered', route_start: '08:30', route_end: '10:45', distance_km: '12', eta: '10:30', created_at: '2024-03-20' },
+    { id: 2, driver_id: 2, vehicle_id: 2, customer_name: 'TanzaBuild Construction', customer_address: 'Morogoro', destination: 'Industrial Zone', status: 'In Transit', route_start: '09:00', route_end: null, distance_km: '45', eta: '12:00', created_at: '2024-03-22' },
+    { id: 3, driver_id: 3, vehicle_id: 4, customer_name: 'Arusha Retail Store', customer_address: 'Arusha', destination: 'CBD Area', status: 'Pending', route_start: null, route_end: null, distance_km: '25', eta: '14:00', created_at: '2024-03-22' },
+    { id: 4, driver_id: 1, vehicle_id: 1, customer_name: 'Kilimanjaro Developers', customer_address: 'Moshi', destination: 'Construction Site', status: 'Delivered', route_start: '06:00', route_end: '09:30', distance_km: '80', eta: '09:00', created_at: '2024-03-21' }
+  ]);
   const [deliveryForm, setDeliveryForm] = useState({ driver_id: '', vehicle_id: '', customer_name: '', customer_address: '', destination: '', status: 'Pending', route_start: '', route_end: '', distance_km: '0', eta: '' });
 
-  const [suppliers, setSuppliers] = useState([]);
+  const [suppliers, setSuppliers] = useState([
+    { id: 1, name: 'East Africa Cement Co.', contact_person: 'Mr. Kimani', phone: '+255789101112', email: 'sales@eacement.com', address: 'Dar es Salaam', rating: '4.8', notes: 'Reliable supplier', payment_terms: 'Net 30', created_at: '2024-01-10' },
+    { id: 2, name: 'Tanzania Steel Mills', contact_person: 'Ms. Upendo', phone: '+255789202122', email: 'supply@tsteel.com', address: 'Morogoro', rating: '4.5', notes: 'Bulk discount available', payment_terms: 'Net 15', created_at: '2024-01-15' },
+    { id: 3, name: 'Coastal Paint Industries', contact_person: 'Mr. Joseph', phone: '+255789303132', email: 'order@cpaint.com', address: 'Dar es Salaam', rating: '4.2', notes: 'Good quality paint', payment_terms: 'Net 45', created_at: '2024-02-05' },
+    { id: 4, name: 'Northern Timber Trading', contact_person: 'Ms. Grace', phone: '+255789404142', email: 'supply@nttimber.com', address: 'Arusha', rating: '4.6', notes: 'High quality timber', payment_terms: 'Net 30', created_at: '2024-02-10' }
+  ]);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(logoScale, {
-        toValue: 1,
-        duration: 1800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 1400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(progressWidth, {
-        toValue: 1,
-        duration: 2200,
-        useNativeDriver: false,
-      }),
-    ]).start();
-
-    const timer = setTimeout(() => {
+    const timeout = setTimeout(() => {
       setInitializing(false);
-    }, 2600);
-    return () => clearTimeout(timer);
+    }, 3200);
+
+    return () => clearTimeout(timeout);
   }, []);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [supplierForm, setSupplierForm] = useState({ name: '', contact_person: '', phone: '', email: '', address: '', rating: '0', notes: '' });
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [tenantForm, setTenantForm] = useState({ business_name: '', subdomain: '', subscription_status: 'Active' });
 
-  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([
+    { id: 1, supplier_id: 1, supplier_name: 'East Africa Cement Co.', order_number: 'PO-2024-0001', status: 'Delivered', total_amount: '9000000', currency: 'TZS', expected_delivery_date: '2024-03-25', actual_delivery_date: '2024-03-24', quantity: '500', unit: 'Bags', created_at: '2024-03-10' },
+    { id: 2, supplier_id: 2, supplier_name: 'Tanzania Steel Mills', order_number: 'PO-2024-0002', status: 'In Transit', total_amount: '5500000', currency: 'TZS', expected_delivery_date: '2024-03-28', actual_delivery_date: null, quantity: '2200', unit: 'kg', created_at: '2024-03-15' },
+    { id: 3, supplier_id: 3, supplier_name: 'Coastal Paint Industries', order_number: 'PO-2024-0003', status: 'Pending', total_amount: '2125000', currency: 'TZS', expected_delivery_date: '2024-04-05', actual_delivery_date: null, quantity: '25', unit: 'Tins', created_at: '2024-03-18' },
+    { id: 4, supplier_id: 4, supplier_name: 'Northern Timber Trading', order_number: 'PO-2024-0004', status: 'Delivered', total_amount: '1872000', currency: 'TZS', expected_delivery_date: '2024-03-22', actual_delivery_date: '2024-03-22', quantity: '156', unit: 'Pieces', created_at: '2024-03-12' }
+  ]);
   const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState(null);
   const [purchaseOrderForm, setPurchaseOrderForm] = useState({ supplier_id: '', order_number: '', status: 'Pending', total_amount: '0', currency: 'TZS', expected_delivery_date: '', notes: '' });
 
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([
+    { id: 1, user_id: 1, user_name: 'John Mkwanda', work_date: '2024-03-22', status: 'Present', check_in: '08:00', check_out: '17:00', hours_worked: '9', notes: '' },
+    { id: 2, user_id: 2, user_name: 'Sarah Mwase', work_date: '2024-03-22', status: 'Present', check_in: '08:15', check_out: '16:45', hours_worked: '8.5', notes: 'Field visit' },
+    { id: 3, user_id: 3, user_name: 'David Kipchoge', work_date: '2024-03-22', status: 'Present', check_in: '06:30', check_out: '18:00', hours_worked: '11.5', notes: 'Long delivery route' },
+    { id: 4, user_id: 4, user_name: 'Grace Nakibuuka', work_date: '2024-03-22', status: 'Present', check_in: '08:00', check_out: '17:00', hours_worked: '9', notes: '' },
+    { id: 5, user_id: 5, user_name: 'Kwame Asante', work_date: '2024-03-22', status: 'Absent', check_in: null, check_out: null, hours_worked: '0', notes: 'Medical leave' }
+  ]);
   const [selectedAttendance, setSelectedAttendance] = useState(null);
   const [attendanceForm, setAttendanceForm] = useState({ user_id: '', work_date: '', status: 'Present', check_in: '', check_out: '', notes: '' });
 
-  const [expenses, setExpenses] = useState([]);
+  const [expenses, setExpenses] = useState([
+    { id: 1, category: 'Transport', vendor: 'Dar Fuel Station', amount: '450000', currency: 'TZS', payment_method: 'Cash', expense_date: '2024-03-20', description: 'Vehicle fuel - Truck TZA-001', status: 'Approved', created_at: '2024-03-20' },
+    { id: 2, category: 'Utilities', vendor: 'TANESCO', amount: '125000', currency: 'TZS', payment_method: 'Bank Transfer', expense_date: '2024-03-15', description: 'March electricity bill', status: 'Approved', created_at: '2024-03-15' },
+    { id: 3, category: 'Maintenance', vendor: 'Auto Repair Services', amount: '280000', currency: 'TZS', payment_method: 'Cash', expense_date: '2024-03-18', description: 'Truck maintenance and repairs', status: 'Pending', created_at: '2024-03-18' },
+    { id: 4, category: 'Office', vendor: 'Office Supplies Ltd', amount: '95000', currency: 'TZS', payment_method: 'Cash', expense_date: '2024-03-19', description: 'Stationery and office supplies', status: 'Approved', created_at: '2024-03-19' }
+  ]);
   const [expenseForm, setExpenseForm] = useState({ category: '', vendor: '', amount: '0', currency: 'TZS', payment_method: 'Cash', expense_date: '', description: '' });
-  const [payments, setPayments] = useState([]);
+  const [payments, setPayments] = useState([
+    { id: 1, customer_id: 1, customer_name: 'Marco Materials Ltd', amount: '450000', payment_method: 'Bank Transfer', invoice_number: 'INV-2024-0001', status: 'Completed', paid_at: '2024-03-16', due_date: '2024-03-20' },
+    { id: 2, customer_id: 2, customer_name: 'TanzaBuild Construction', amount: '1200000', payment_method: 'Cash', invoice_number: 'INV-2024-0002', status: 'Completed', paid_at: '2024-03-19', due_date: '2024-03-25' },
+    { id: 3, customer_id: 4, customer_name: 'Mbeya Hardware Hub', amount: '165000', payment_method: 'Mobile Money', invoice_number: 'INV-2024-0004', status: 'Completed', paid_at: '2024-03-22', due_date: '2024-03-22' },
+    { id: 4, customer_id: 3, customer_name: 'Arusha Retail Store', amount: '142500', payment_method: 'Partial Payment', invoice_number: 'INV-2024-0003', status: 'Partial', paid_at: '2024-03-21', due_date: '2024-04-05' }
+  ]);
   const [selectedPayment, setSelectedPayment] = useState(null);
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState([
+    { id: 1, name: 'John Mkwanda', email: 'john.mkwanda@jengaplus.com', role: 'Boss', phone: '+255755111111', department: 'Management', status: 'Active', created_at: '2024-01-05' },
+    { id: 2, name: 'Sarah Mwase', email: 'sarah.mwase@jengaplus.com', role: 'Salesperson', phone: '+255755222222', department: 'Sales', status: 'Active', created_at: '2024-01-10' },
+    { id: 3, name: 'David Kipchoge', email: 'david.kipchoge@jengaplus.com', role: 'Driver', phone: '+255755333333', department: 'Logistics', status: 'Active', created_at: '2024-01-12' },
+    { id: 4, name: 'Grace Nakibuuka', email: 'grace.nakibuuka@jengaplus.com', role: 'Salesperson', phone: '+255755444444', department: 'Sales', status: 'Active', created_at: '2024-02-01' },
+    { id: 5, name: 'Kwame Asante', email: 'kwame.asante@jengaplus.com', role: 'Driver', phone: '+255755555555', department: 'Logistics', status: 'Active', created_at: '2024-02-05' }
+  ]);
   const [selectedUserRecord, setSelectedUserRecord] = useState(null);
   const [userForm, setUserForm] = useState({ name: '', email: '', password: '', role: 'Salesperson' });
-  const [paymentSummary, setPaymentSummary] = useState(null);
+  const [paymentSummary, setPaymentSummary] = useState({ total_paid: '1957500', total_pending: '142500', payment_rate: '93.2', avg_payment_days: '4' });
   const [paymentSummaryChart, setPaymentSummaryChart] = useState(null);
-  const [agingReport, setAgingReport] = useState(null);
+  const [agingReport, setAgingReport] = useState([]);
   const [selectedDebt, setSelectedDebt] = useState(null);
   const [reportData, setReportData] = useState(null);
-  const [financeSummary, setFinanceSummary] = useState(null);
-  const [dashboardSummary, setDashboardSummary] = useState(null);
-  const [bossSalesSummary, setBossSalesSummary] = useState(null);
+  const [financeSummary, setFinanceSummary] = useState({ total_revenue: '2100000', total_expenses: '950000', gross_profit: '1150000', profit_margin: '54.8%', cash_position: '1200000', accounts_receivable: '142500' });
+  const [dashboardSummary, setDashboardSummary] = useState({ total_customers: '5', active_sales: '4', pending_deliveries: '1', low_stock_items: '3', total_inventory_value: '48500000', pending_payments: '142500' });
+  const [bossSalesSummary, setBossSalesSummary] = useState({ daily: 450000, weekly: 1837500, monthly: 2100000 });
   const [growthReport, setGrowthReport] = useState(null);
   const [adminOverview, setAdminOverview] = useState(null);
   const [schedulerResult, setSchedulerResult] = useState(null);
@@ -1648,39 +1695,35 @@ export default function App() {
     >
       {initializing ? (
         <View style={styles.startupScreen}>
-          <View style={styles.startupCard}>
-            <Animated.View style={[styles.startupLogoFrame, {
-              transform: [{ scale: logoScale }],
-              opacity: logoOpacity,
-            }]}
-            >
-              <Image
-                source={require('./assets/icon.png')}
-                style={styles.startupLogo}
-                resizeMode="contain"
-              />
-              <View style={styles.startupLogoRim} pointerEvents="none" />
-            </Animated.View>
-            <Text style={styles.startupTitle}>JENGA PLUS</Text>
-            <Text style={styles.startupBadgeText}>PROJECT LAUNCH</Text>
+          <Animatable.View animation="fadeInUp" duration={800} style={styles.startupCard}>
+            <Animatable.View animation="pulse" easing="ease-out" iterationCount="infinite" duration={1800} style={styles.startupLogoPulse}>
+              <View style={styles.startupLogoFrame}>
+                <Animatable.Image
+                  animation="zoomIn"
+                  duration={1600}
+                  delay={240}
+                  source={require('./assets/jengaplus_enhanced.png')}
+                  style={styles.startupLogo}
+                  resizeMode="contain"
+                />
+              </View>
+            </Animatable.View>
+            <Animatable.Text animation="fadeInDown" duration={1100} delay={900} style={styles.startupTitle}>
+              JENGA PLUS
+            </Animatable.Text>
+            <Animatable.Text animation="fadeIn" duration={1000} delay={1200} style={styles.startupBadgeText}>
+              BUILT FOR BUSINESS
+            </Animatable.Text>
             <View style={styles.startupFeatureBadgeCombined}>
-              <Text style={styles.startupFeatureText}>🏗️ Crane · 🪖 Helmet · Project launch</Text>
+              <Text style={styles.startupFeatureText}>🚀 Speed · 📈 Growth · 📊 Control</Text>
             </View>
-            <View style={styles.startupProgressBar}>
-              <Animated.View
-                style={[
-                  styles.startupProgressFill,
-                  {
-                    width: progressWidth.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0%', '100%'],
-                    }),
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.startupHint}>Loading project blueprint & workspace tools…</Text>
-          </View>
+            <Animatable.View animation="slideInLeft" duration={900} delay={1500} style={styles.startupProgressBar}>
+              <View style={[styles.startupProgressFill, { width: '88%' }]} />
+            </Animatable.View>
+            <Animatable.Text animation="fadeIn" duration={1000} delay={1650} style={styles.startupHint}>
+              Loading your workspace, secure tools, and business insights…
+            </Animatable.Text>
+          </Animatable.View>
         </View>
       ) : (
         currentScreen === 'Login' && (
@@ -1694,7 +1737,7 @@ export default function App() {
           <View style={styles.loginCard}>
             
             <Text style={styles.brandTitle}>JENGA PLUS</Text>
-            <Text style={styles.brandSubtitle}>Construction materials workflow, simplified.</Text>
+            <Text style={styles.brandSubtitle}>Smart Construction & Management</Text>
 
             <View style={styles.fieldRow}>
               <Text style={styles.fieldIcon}>📧</Text>
@@ -1957,6 +2000,31 @@ export default function App() {
             ) : (
               <Text style={styles.inputLabel}>Loading metrics...</Text>
             )}
+          </View>
+
+          <Text style={styles.sectionDividerHeader}>Registered Team Members 👥</Text>
+          <View style={{ marginBottom: 16 }}>
+            {users && users.length > 0 ? (
+              <View>
+                {users.map((user) => (
+                  <View key={user.id} style={[styles.cardRow, { marginBottom: 8, paddingHorizontal: 12, paddingVertical: 10, borderLeftWidth: 4, borderLeftColor: user.role === 'Boss' ? '#F59E0B' : user.role === 'Driver' ? '#3B82F6' : '#10B981' }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.statsLabel, { fontSize: 15, fontWeight: '700' }]}>{user.name}</Text>
+                      <Text style={[styles.cardSubtitle, { fontSize: 12, marginTop: 2 }]}>{user.role} • {user.email}</Text>
+                      {user.phone && <Text style={[styles.cardSubtitle, { fontSize: 11, marginTop: 2 }]}>📱 {user.phone}</Text>}
+                    </View>
+                    <View style={{ paddingHorizontal: 8, paddingVertical: 4, backgroundColor: user.role === 'Boss' ? 'rgba(245,158,11,0.15)' : user.role === 'Driver' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)', borderRadius: 6 }}>
+                      <Text style={{ color: user.role === 'Boss' ? '#F59E0B' : user.role === 'Driver' ? '#3B82F6' : '#10B981', fontSize: 11, fontWeight: '700' }}>{user.role}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.cardSubtitle}>No team members registered yet</Text>
+            )}
+            <TouchableOpacity style={[styles.primaryActionButton, { marginTop: 12 }]} onPress={() => { loadUsers(); setCurrentScreen('Users'); }}>
+              <Text style={styles.actionBtnTextText}>Manage Team</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={{ marginTop: 16 }}>
@@ -2672,6 +2740,25 @@ export default function App() {
             <Text style={styles.cardSubtitle}>Open orders: {sales?.filter((sale) => sale.payment_status !== 'Paid').length ?? 0}</Text>
             <Text style={styles.cardSubtitle}>Outstanding customer debts: {customerDebts?.length ?? 0}</Text>
           </View>
+
+          <Text style={styles.sectionDividerHeader}>Your Team 👫</Text>
+          <View style={{ marginBottom: 16 }}>
+            {users && users.length > 0 ? (
+              <View>
+                {users.filter(u => u.role !== 'Driver').map((user) => (
+                  <View key={user.id} style={[styles.cardRow, { marginBottom: 8, paddingHorizontal: 12, paddingVertical: 10, borderLeftWidth: 3, borderLeftColor: user.role === 'Boss' ? '#F59E0B' : '#10B981' }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.statsLabel, { fontSize: 14, fontWeight: '700' }]}>{user.name}</Text>
+                      <Text style={[styles.cardSubtitle, { fontSize: 11, marginTop: 2 }]}>{user.role}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.cardSubtitle}>No team members available</Text>
+            )}
+          </View>
+
           <TouchableOpacity style={styles.secondaryActionButton} onPress={() => setCurrentScreen('NewSale')}>
             <Text style={styles.secondaryActionText}>+ Create New Sale</Text>
           </TouchableOpacity>
@@ -3728,7 +3815,8 @@ const styles = StyleSheet.create({
   startupLabel: { color: '#D1D5DB', fontSize: 18, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center', opacity: 0.88 },
   startupFeatureBadgeCombined: { alignSelf: 'center', backgroundColor: 'rgba(250, 204, 21, 0.12)', borderColor: 'rgba(250, 204, 21, 0.34)', borderWidth: 1, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 16, shadowColor: '#FACC15', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 12 },
   startupFeatureText: { color: '#FACC15', fontSize: 13, fontWeight: '900', letterSpacing: 0.6 },
-  startupLogoFrame: { width: 220, height: 220, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  startupLogoPulse: { width: 240, height: 240, borderRadius: 120, alignItems: 'center', justifyContent: 'center', marginBottom: 12, backgroundColor: 'rgba(59, 130, 246, 0.08)' },
+  startupLogoFrame: { width: 220, height: 220, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
   startupLogoRim: { position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, borderRadius: 32, borderWidth: 5, borderColor: 'rgba(59,130,246,0.9)', opacity: 0.95, shadowColor: '#0EA5FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 20, elevation: 16 },
   
   startupProgressBar: { width: '100%', height: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginTop: 10, marginBottom: 10 },
@@ -3798,9 +3886,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.9,
   },
   startupLogo: {
-    width: 210,
-    height: 210,
-    marginVertical: 16,
+    width: 178,
+    height: 178,
   },
   loginLogoCodeText: {
     color: '#8ab4f8',

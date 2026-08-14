@@ -14,7 +14,12 @@
     "start:backend": "node backend/server.js",
     "seed": "node backend/seed.js",
     "test:sms": "node backend/send-test-sms.js",
-    "test:sms-service": "node backend/services/smsService.test.js"
+    "test:sms-service": "node backend/services/smsService.test.js",
+    "build:android-apk": "eas build --platform android --local",
+    "build:android-aab": "eas build --platform android --local --app-build-type app-bundle",
+    "build:ios": "eas build --platform ios --local",
+    "build:prod": "eas build --platform android --profile production",
+    "submit": "eas submit --platform android"
   },
   "dependencies": {
     "@react-native-picker/picker": "^2.4.8",
@@ -34,6 +39,7 @@
     "pg": "^8.11.2",
     "react": "19.2.3",
     "react-native": "0.86.2",
+    "react-native-animatable": "^1.4.0",
     "react-native-chart-kit": "^7.0.0",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-svg": "15.15.4"

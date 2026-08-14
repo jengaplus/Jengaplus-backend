@@ -52,7 +52,7 @@
             "targetSdkVersion": 35
           },
           "ios": {
-            "deploymentTarget": "13.4"
+            "deploymentTarget": "16.4"
           }
         }
       ]

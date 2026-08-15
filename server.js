@@ -9,17 +9,22 @@ const smsService = require('./services/smsService');
 const { streamInvoicePDF } = require('./services/pdfService');
 const inventoryService = require('./services/inventoryService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'jengaplus_secret_key';
+// Require environment variables - no hardcoded defaults for security
+const JWT_SECRET = process.env.JWT_SECRET;
+const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME;
+const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL;
+const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD;
+const SUPERADMIN_ADMISSION = process.env.SUPERADMIN_ADMISSION;
 const OTP_EXPIRATION_MINUTES = 10;
 const PASSWORD_RESET_EXPIRATION_MINUTES = 60;
 
-const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME || 'Super Admin';
-const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'admin@jengaplus.com';
-const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || 'Admin@1234';
-const SUPERADMIN_ADMISSION = process.env.SUPERADMIN_ADMISSION || `ADM-${Date.now()}`;
-
-if (!process.env.SUPERADMIN_EMAIL || !process.env.SUPERADMIN_PASSWORD) {
-  console.warn('⚠️ SUPERADMIN_EMAIL or SUPERADMIN_PASSWORD not configured. Default SuperAdmin credentials will be used. Set these values in .env for secure production use.');
+// Validate required environment variables
+const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL', 'SUPERADMIN_EMAIL', 'SUPERADMIN_PASSWORD'];
+const missingEnvVars = requiredEnvVars.filter(v => !process.env[v]);
+if (missingEnvVars.length > 0) {
+  console.error('❌ FATAL: Missing required environment variables:', missingEnvVars.join(', '));
+  console.error('Please configure these in your .env file');
+  process.exit(1);
 }
 
 const app = express();
@@ -2706,16 +2711,11 @@ app.get('/api/reports/aging/:tenantId', async (req, res) => {
   }
 });
 
-// Initialize Server and Database Schema From Scratch
+// Initialize Server
 app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`🚀 JengaPlus Master System actively executing workflows on Port ${PORT}`);
-  // Environment sanity checks
-  if (!process.env.DATABASE_URL) console.warn('⚠️ WARNING: DATABASE_URL is not set. Tests requiring DB will fail.');
-  if (!process.env.NEXTSMS_PASSWORD) console.warn('⚠️ WARNING: NEXTSMS_PASSWORD is not set. SMS sending will fail.');
-  // Initialize DB schema (safe idempotent operation)
-  try {
-    await resetAndInitializeDatabase();
-  } catch (e) {
-    console.error('Failed to initialize DB on startup:', e.message);
-  }
+  console.log(`🚀 JengaPlus Server running on Port ${PORT}`);
+  console.log('✅ Environment variables validated');
+  // Database reset is now a manual operation only for safety
+  // Use: POST /api/admin/reset-database (with proper authorization)
+  console.log('📌 Database reset disabled on startup (manual operation only)');
 });

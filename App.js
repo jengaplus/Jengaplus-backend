@@ -1695,13 +1695,14 @@ export default function App() {
     >
       {initializing ? (
         <View style={styles.startupScreen}>
-          <Animatable.View animation="fadeInUp" duration={800} style={styles.startupCard}>
-            <Animatable.View animation="pulse" easing="ease-out" iterationCount="infinite" duration={1800} style={styles.startupLogoPulse}>
+          <Animatable.View animation="fadeInUp" duration={900} style={styles.startupCard}>
+            <Animatable.View animation="pulse" easing="ease-out" iterationCount="infinite" duration={2000} style={styles.startupLogoPulse}>
+              <View style={styles.startupGlowRing} />
               <View style={styles.startupLogoFrame}>
                 <Animatable.Image
                   animation="zoomIn"
                   duration={1600}
-                  delay={240}
+                  delay={260}
                   source={require('./assets/jengaplus_enhanced.png')}
                   style={styles.startupLogo}
                   resizeMode="contain"
@@ -1718,10 +1719,10 @@ export default function App() {
               <Text style={styles.startupFeatureText}>🚀 Speed · 📈 Growth · 📊 Control</Text>
             </View>
             <Animatable.View animation="slideInLeft" duration={900} delay={1500} style={styles.startupProgressBar}>
-              <View style={[styles.startupProgressFill, { width: '88%' }]} />
+              <View style={[styles.startupProgressFill, { width: '90%' }]} />
             </Animatable.View>
             <Animatable.Text animation="fadeIn" duration={1000} delay={1650} style={styles.startupHint}>
-              Loading your workspace, secure tools, and business insights…
+              Preparing your workspace, insights, and tools…
             </Animatable.Text>
           </Animatable.View>
         </View>
@@ -3809,14 +3810,15 @@ const styles = StyleSheet.create({
   loginWatermark: { fontSize: 72, fontWeight: '900', color: '#FFFFFF', letterSpacing: 14, textTransform: 'uppercase' },
   loginCard: { width: '100%', maxWidth: 420, backgroundColor: 'rgba(12, 20, 42, 0.88)', borderRadius: 28, padding: 28, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)', shadowColor: '#0B2444', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.26, shadowRadius: 32, elevation: 18 },
   startupScreen: { flex: 1, backgroundColor: '#020814', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
-  startupCard: { width: '100%', maxWidth: 420, backgroundColor: 'rgba(10, 18, 36, 0.96)', borderRadius: 28, padding: 26, borderWidth: 1, borderColor: 'rgba(109, 116, 129, 0.18)', shadowColor: '#000', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.22, shadowRadius: 28, elevation: 16, alignItems: 'center' },
-  startupBadgeText: { color: '#FACC15', fontSize: 14, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase', marginTop: 12, marginBottom: 16, opacity: 0.96 },
-  startupTitle: { color: '#F8FAFC', fontSize: 48, fontWeight: '900', letterSpacing: 5, textTransform: 'uppercase', marginTop: 20, marginBottom: 8, textAlign: 'center', textShadowColor: 'rgba(96, 165, 250, 0.35)', textShadowOffset: { width: 0, height: 6 }, textShadowRadius: 18 },
+  startupCard: { width: '100%', maxWidth: 440, backgroundColor: 'rgba(10, 18, 36, 0.96)', borderRadius: 32, padding: 28, borderWidth: 1, borderColor: 'rgba(109, 116, 129, 0.18)', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.25, shadowRadius: 30, elevation: 18, alignItems: 'center' },
+  startupBadgeText: { color: '#FACC15', fontSize: 14, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase', marginTop: 12, marginBottom: 18, opacity: 0.98 },
+  startupTitle: { color: '#F8FAFC', fontSize: 40, fontWeight: '900', letterSpacing: 4, textTransform: 'uppercase', marginTop: 18, marginBottom: 8, textAlign: 'center', textShadowColor: 'rgba(96, 165, 250, 0.4)', textShadowOffset: { width: 0, height: 7 }, textShadowRadius: 18 },
   startupLabel: { color: '#D1D5DB', fontSize: 18, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10, textAlign: 'center', opacity: 0.88 },
-  startupFeatureBadgeCombined: { alignSelf: 'center', backgroundColor: 'rgba(250, 204, 21, 0.12)', borderColor: 'rgba(250, 204, 21, 0.34)', borderWidth: 1, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 16, shadowColor: '#FACC15', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 12 },
+  startupFeatureBadgeCombined: { alignSelf: 'center', backgroundColor: 'rgba(250, 204, 21, 0.12)', borderColor: 'rgba(250, 204, 21, 0.34)', borderWidth: 1, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 10, marginBottom: 18, shadowColor: '#FACC15', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 12 },
   startupFeatureText: { color: '#FACC15', fontSize: 13, fontWeight: '900', letterSpacing: 0.6 },
-  startupLogoPulse: { width: 240, height: 240, borderRadius: 120, alignItems: 'center', justifyContent: 'center', marginBottom: 12, backgroundColor: 'rgba(59, 130, 246, 0.08)' },
-  startupLogoFrame: { width: 220, height: 220, borderRadius: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  startupLogoPulse: { width: 300, height: 300, borderRadius: 150, alignItems: 'center', justifyContent: 'center', marginBottom: 12, backgroundColor: 'rgba(59, 130, 246, 0.08)' },
+  startupGlowRing: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(59,130,246,0.12)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.28)' },
+  startupLogoFrame: { width: 240, height: 240, borderRadius: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', overflow: 'hidden' },
   startupLogoRim: { position: 'absolute', top: -6, left: -6, right: -6, bottom: -6, borderRadius: 32, borderWidth: 5, borderColor: 'rgba(59,130,246,0.9)', opacity: 0.95, shadowColor: '#0EA5FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 20, elevation: 16 },
   
   startupProgressBar: { width: '100%', height: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginTop: 10, marginBottom: 10 },
@@ -3886,8 +3888,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.9,
   },
   startupLogo: {
-    width: 178,
-    height: 178,
+    width: 220,
+    height: 220,
   },
   loginLogoCodeText: {
     color: '#8ab4f8',

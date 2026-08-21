@@ -6,14 +6,8 @@
     "scheme": "jengaplus",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/jengaplus_enhanced.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#020814"
-    },
     "userInterfaceStyle": "dark",
     "runtimeVersion": "1.0.0",
-    "newArchEnabled": false,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.jengaplus.appv2",
@@ -31,23 +25,27 @@
       },
       "package": "com.jengaplus.appv2",
       "versionCode": 1,
-      "usesCleartextTraffic": true,
       "permissions": [
         "CAMERA",
         "INTERNET",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
         "VIBRATE",
-        "RECORD_AUDIO",
-        "SYSTEM_ALERT_WINDOW"
+        "RECORD_AUDIO"
       ]
     },
     "plugins": [
       [
+        "expo-splash-screen",
+        {
+          "image": "./assets/icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#020814"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true,
+            "usesCleartextTraffic": false,
             "compileSdkVersion": 36,
             "targetSdkVersion": 36
           },

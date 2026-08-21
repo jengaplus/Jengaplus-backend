@@ -2,11 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 const ASSET_DIR = path.resolve(__dirname, 'assets');
-const SPLASH_CANDIDATES = ['jengaplus_enhanced.png', 'splash-icon.png'];
-
-const splashImage = SPLASH_CANDIDATES.find((file) =>
-  fs.existsSync(path.join(ASSET_DIR, file))
-);
+const requiredAssets = ['icon.png', 'jengaplus_enhanced.png', 'splash-icon.png'];
+const missingAssets = requiredAssets.filter((file) => !fs.existsSync(path.join(ASSET_DIR, file)));
+if (missingAssets.length > 0) {
+  console.warn(`Missing optional branding assets: ${missingAssets.join(', ')}`);
+}
 
 module.exports = ({ config }) => {
   const baseConfig = config.expo || config;
@@ -21,10 +21,6 @@ module.exports = ({ config }) => {
         ...easConfig,
         projectId: 'b1d39f00-ebb2-472a-852d-05b0bfdc4181',
       },
-    },
-    splash: {
-      ...(baseConfig.splash || {}),
-      image: splashImage ? `./assets/${splashImage}` : (baseConfig.splash?.image || './assets/splash-icon.png'),
     },
   };
 

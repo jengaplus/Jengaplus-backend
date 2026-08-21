@@ -3,10 +3,18 @@ require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
 
-const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME || 'Super Admin';
-const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL || 'admin@jengaplus.com';
-const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || 'Admin@1234';
-const SUPERADMIN_ADMISSION = process.env.SUPERADMIN_ADMISSION || `ADM-${Date.now()}`;
+const requiredSeedEnv = ['DATABASE_URL', 'SUPERADMIN_NAME', 'SUPERADMIN_EMAIL', 'SUPERADMIN_PASSWORD', 'SUPERADMIN_ADMISSION', 'SEED_USER_PASSWORD'];
+const missingSeedEnv = requiredSeedEnv.filter((key) => !process.env[key]);
+if (missingSeedEnv.length > 0) {
+  console.error(`Missing required seed environment variables: ${missingSeedEnv.join(', ')}`);
+  process.exit(1);
+}
+
+const SUPERADMIN_NAME = process.env.SUPERADMIN_NAME;
+const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL;
+const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD;
+const SUPERADMIN_ADMISSION = process.env.SUPERADMIN_ADMISSION;
+const SEED_USER_PASSWORD = process.env.SEED_USER_PASSWORD;
 
 async function seed() {
   try {
@@ -24,9 +32,8 @@ async function seed() {
     );
     const tenant = tenantRes.rows[0];
 
-    // Create users with bcrypt hashed passwords (password: 12345678)
-    const plainPassword = '12345678';
-    const hashed = await bcrypt.hash(plainPassword, 10);
+    // Create users with a password supplied securely through the environment.
+    const hashed = await bcrypt.hash(SEED_USER_PASSWORD, 10);
 
     console.log('Creating users...');
     const users = [

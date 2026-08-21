@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const NEXTSMS_USERNAME = String(process.env.NEXTSMS_USERNAME || 'josiahmarco93.e9b');
+const NEXTSMS_USERNAME = String(process.env.NEXTSMS_USERNAME || '').trim();
 const NEXTSMS_PASSWORD = String(process.env.NEXTSMS_PASSWORD || '').trim();
 const NEXTSMS_API_KEY = String(process.env.NEXTSMS_API_KEY || '').trim();
 const NEXTSMS_TEST_MODE = String(process.env.NEXTSMS_TEST_MODE || 'false').toLowerCase() === 'true';

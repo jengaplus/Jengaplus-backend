@@ -17,6 +17,7 @@ const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD;
 const SUPERADMIN_ADMISSION = process.env.SUPERADMIN_ADMISSION;
 const OTP_EXPIRATION_MINUTES = 10;
 const PASSWORD_RESET_EXPIRATION_MINUTES = 60;
+const DEMO_AUTH_RESPONSES = String(process.env.DEMO_AUTH_RESPONSES || 'false').toLowerCase() === 'true';
 
 // Validate required environment variables
 const requiredEnvVars = ['JWT_SECRET', 'DATABASE_URL', 'SUPERADMIN_EMAIL', 'SUPERADMIN_PASSWORD'];
@@ -460,6 +461,54 @@ const recordAudit = async ({ tenantId = null, userId = null, action, entity, det
   }
 };
 
+// All business API routes require JWT by default. Authentication and the
+// phone-protected receipt route remain public by design.
+const PUBLIC_API_PATHS = new Set([
+  '/auth/register',
+  '/auth/login',
+  '/auth/send-otp',
+  '/auth/verify-otp',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/biometric'
+]);
+
+app.use('/api', (req, res, next) => {
+  const isPublicAuth = PUBLIC_API_PATHS.has(req.path);
+  const isReceiptRoute = req.path.startsWith('/orders/') && req.path.endsWith('/receipt');
+  if (isPublicAuth || isReceiptRoute) return next();
+
+  authenticateToken(req, res, () => {
+    const role = normalizeRole(req.user?.role);
+    const isSuperAdmin = role === 'superadmin';
+    const body = req.body && typeof req.body === 'object' ? req.body : null;
+    const suppliedTenant = body?.tenant_id ?? body?.tenantId ?? req.query?.tenantId;
+
+    if (!isSuperAdmin && suppliedTenant != null && String(suppliedTenant) !== String(req.user.tenant_id)) {
+      return res.status(403).json({ error: 'Forbidden: tenant scope does not match authenticated user' });
+    }
+
+    // For tenant users, the server is the source of truth for tenant scope.
+    // This prevents clients from selecting another tenant by editing JSON.
+    if (!isSuperAdmin && body && req.user?.tenant_id != null) {
+      if (Object.prototype.hasOwnProperty.call(body, 'tenant_id')) body.tenant_id = req.user.tenant_id;
+      if (Object.prototype.hasOwnProperty.call(body, 'tenantId')) body.tenantId = req.user.tenant_id;
+      if (!Object.prototype.hasOwnProperty.call(body, 'tenant_id')) body.tenant_id = req.user.tenant_id;
+    }
+
+    next();
+  });
+});
+
+// Validate explicit tenant path parameters after Express resolves the route.
+app.param('tenantId', (req, res, next, tenantId) => {
+  const role = normalizeRole(req.user?.role);
+  if (role !== 'superadmin' && String(tenantId) !== String(req.user?.tenant_id)) {
+    return res.status(403).json({ error: 'Forbidden: tenant scope does not match authenticated user' });
+  }
+  next();
+});
+
 // Root Endpoint
 app.get('/', (req, res) => {
   res.json({ message: '🚀 JengaPlus SaaS Master Backend API is running successfully' });
@@ -522,6 +571,19 @@ app.post('/api/auth/register', async (req, res) => {
   if (!business_name || !subdomain || !name || !email || !password) {
     return res.status(400).json({ error: 'Business name, subdomain, name, email and password are required' });
   }
+
+  // Validate the requested role before creating a tenant, otherwise an invalid
+  // registration could leave an orphan tenant behind.
+  const allowedRoles = ['boss', 'salesperson', 'driver'];
+  const normalized = role ? role.toString().trim().toLowerCase() : 'boss';
+  if (['admin', 'superadmin'].includes(normalized)) {
+    return res.status(400).json({ error: 'Cannot create Admin or SuperAdmin through the public registration flow.' });
+  }
+  if (!allowedRoles.includes(normalized)) {
+    return res.status(400).json({ error: 'Invalid role for registration. Only Boss, Salesperson, and Driver are allowed.' });
+  }
+  const userRole = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+
   try {
     const existingTenant = await pool.query('SELECT id FROM tenants WHERE subdomain = $1', [subdomain]);
     if (existingTenant.rows.length > 0) {
@@ -533,16 +595,6 @@ app.post('/api/auth/register', async (req, res) => {
     );
 
     const passwordHash = await bcrypt.hash(password, 10);
-    // Allow only tenant roles to be created via registration UI
-    const allowedRoles = ['boss', 'salesperson', 'driver', 'customer'];
-    const normalized = role ? role.toString().trim().toLowerCase() : 'boss';
-    if (['admin', 'superadmin'].includes(normalized)) {
-      return res.status(400).json({ error: 'Cannot create Admin or SuperAdmin through the public registration flow.' });
-    }
-    if (!allowedRoles.includes(normalized)) {
-      return res.status(400).json({ error: 'Invalid role for registration. Only Boss, Salesperson, Driver, and Customer are allowed.' });
-    }
-    const userRole = normalized.charAt(0).toUpperCase() + normalized.slice(1);
     const admission = `ADM-${Date.now()}`;
 
     const user = await pool.query(
@@ -551,8 +603,18 @@ app.post('/api/auth/register', async (req, res) => {
       [tenant.rows[0].id, name, email, passwordHash, userRole, admission, true]
     );
 
-    const token = generateToken(user.rows[0]);
-    res.json({ message: 'Registration successful', user: user.rows[0], token });
+    const createdUser = user.rows[0];
+    const publicUser = {
+      id: createdUser.id,
+      name: createdUser.name,
+      email: createdUser.email,
+      role: createdUser.role,
+      tenant_id: createdUser.tenant_id,
+      admission: createdUser.admission,
+      is_verified: createdUser.is_verified,
+    };
+    const token = generateToken(createdUser);
+    res.json({ message: 'Registration successful', user: publicUser, token });
 
     (async () => {
       try {
@@ -624,7 +686,9 @@ app.post('/api/auth/send-otp', async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + OTP_EXPIRATION_MINUTES * 60 * 1000);
     await pool.query('UPDATE users SET otp_code = $1, otp_expires = $2 WHERE id = $3', [otp, expiresAt, userResult.rows[0].id]);
-    res.json({ message: 'OTP generated successfully', otp });
+    const response = { message: 'OTP generated successfully' };
+    if (DEMO_AUTH_RESPONSES) response.otp = otp;
+    res.json(response);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -654,7 +718,9 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const resetToken = crypto.randomBytes(20).toString('hex');
     const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRATION_MINUTES * 60 * 1000);
     await pool.query('UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE id = $3', [resetToken, expiresAt, userResult.rows[0].id]);
-    res.json({ message: 'Password reset token generated', reset_token: resetToken });
+    const response = { message: 'Password reset token generated' };
+    if (DEMO_AUTH_RESPONSES) response.reset_token = resetToken;
+    res.json(response);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -678,7 +744,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 app.post('/api/auth/biometric', async (req, res) => {
-  res.json({ message: 'Biometric login placeholder accepted' });
+  res.status(501).json({ error: 'Biometric login is not configured yet' });
 });
 
 app.get('/api/users/:tenantId', authenticateToken, authorizeRoles('SuperAdmin', 'Boss'), async (req, res) => {

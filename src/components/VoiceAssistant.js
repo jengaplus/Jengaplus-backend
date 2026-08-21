@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 
-export default function VoiceAssistant({ onCommand }) {
+export default function VoiceAssistant({ onCommand, apiBase, authToken }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState(null);
@@ -10,9 +10,12 @@ export default function VoiceAssistant({ onCommand }) {
     if (!text) return;
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/voice/ask', {
+      const res = await fetch(`${String(apiBase || '').replace(/\/$/, '')}/voice/ask`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${global.AUTH_TOKEN || ''}` },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify({ text })
       });
       const data = await res.json();

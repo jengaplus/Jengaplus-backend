@@ -13,7 +13,7 @@ import * as FileSystem from 'expo-file-system';
 
 const appApiBase = String(Constants?.expoConfig?.extra?.apiBase || Constants?.manifest?.extra?.apiBase || 'https://jengaplus-backend.onrender.com');
 const API_BASE = `${appApiBase.replace(/\/$/, '')}/api`;
-const allowedRegistrationRoles = ['Boss', 'Salesperson', 'Driver', 'Customer'];
+const allowedRegistrationRoles = ['Boss', 'Salesperson', 'Driver'];
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Login'); // Login, Register, ForgotPassword, ResetPassword, VerifyOTP, BossDashboard, SalesDashboard, Customers, AddCustomer, RecordDebt, Expenses, AddExpense, FinanceSummary, DashboardSummary, Vehicles, AddVehicle, Deliveries, AddDelivery, Suppliers, AddSupplier, EditSupplier, PurchaseOrders, AddPurchaseOrder, EditPurchaseOrder, Attendance, AddAttendance, EditAttendance, Users, EditUser
@@ -177,7 +177,7 @@ export default function App() {
 
   const loadCustomers = async () => {
     try {
-      const response = await fetch(`${API_BASE}/customers/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/customers/${tenantId}`);
       const data = await response.json();
       setCustomers(data);
     } catch (error) {
@@ -197,7 +197,7 @@ export default function App() {
       return Alert.alert('Validation', 'Customer name is required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/customers`, {
+      const response = await authFetch(`${API_BASE}/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...customerForm })
@@ -218,7 +218,7 @@ export default function App() {
 
   const removeCustomer = async (customer) => {
     try {
-      const response = await fetch(`${API_BASE}/customers/${customer.id}`, {
+      const response = await authFetch(`${API_BASE}/customers/${customer.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId })
@@ -256,7 +256,7 @@ export default function App() {
       return Alert.alert('Validation', 'Customer name is required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/customers/${selectedCustomer.id}`, {
+      const response = await authFetch(`${API_BASE}/customers/${selectedCustomer.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...customerForm })
@@ -298,7 +298,7 @@ export default function App() {
       return Alert.alert('Validation', 'Expense category and amount are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/expenses/${selectedExpense.id}`, {
+      const response = await authFetch(`${API_BASE}/expenses/${selectedExpense.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...expenseForm })
@@ -320,7 +320,7 @@ export default function App() {
 
   const deleteExpense = async (expense) => {
     try {
-      const response = await fetch(`${API_BASE}/expenses/${expense.id}`, {
+      const response = await authFetch(`${API_BASE}/expenses/${expense.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId })
@@ -435,7 +435,7 @@ export default function App() {
   const updateDebt = async () => {
     if (!selectedDebt) return Alert.alert('Validation', 'Select a debt entry first.');
     try {
-      const response = await fetch(`${API_BASE}/customer-debts/${selectedDebt.id}`, {
+      const response = await authFetch(`${API_BASE}/customer-debts/${selectedDebt.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, sale_reference: selectedDebt.sale_reference, amount: parseFloat(debtAmount), due_date: debtDueDate, status: selectedDebt.status || 'Pending' })
@@ -458,7 +458,7 @@ export default function App() {
 
   const deleteDebt = async (debt) => {
     try {
-      const response = await fetch(`${API_BASE}/customer-debts/${debt.id}`, {
+      const response = await authFetch(`${API_BASE}/customer-debts/${debt.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId })
@@ -490,7 +490,7 @@ export default function App() {
   const updatePayment = async () => {
     if (!selectedPayment) return Alert.alert('Validation', 'Select a payment record first.');
     try {
-      const response = await fetch(`${API_BASE}/customer-payments/${selectedPayment.id}`, {
+      const response = await authFetch(`${API_BASE}/customer-payments/${selectedPayment.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, customer_id: paymentForm.customer_id || selectedPayment.customer_id, debt_id: paymentForm.debt_id || null, amount: parseFloat(paymentForm.amount), payment_method: paymentForm.payment_method, notes: paymentForm.notes })
@@ -512,7 +512,7 @@ export default function App() {
 
   const deletePayment = async (payment) => {
     try {
-      const response = await fetch(`${API_BASE}/customer-payments/${payment.id}`, {
+      const response = await authFetch(`${API_BASE}/customer-payments/${payment.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId })
@@ -534,7 +534,7 @@ export default function App() {
       return Alert.alert('Validation', 'Amount and due date are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/customers/${customer.id}/debt`, {
+      const response = await authFetch(`${API_BASE}/customers/${customer.id}/debt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, sale_reference: `Invoice ${Date.now()}`, amount: parseFloat(debtAmount), due_date: debtDueDate })
@@ -555,7 +555,7 @@ export default function App() {
 
   const fetchExpenses = async () => {
     try {
-      const response = await fetch(`${API_BASE}/expenses/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/expenses/${tenantId}`);
       const data = await response.json();
       setExpenses(data);
     } catch (error) {
@@ -565,7 +565,7 @@ export default function App() {
 
   const loadPayments = async () => {
     try {
-      const response = await fetch(`${API_BASE}/customers/${tenantId}/payments`);
+      const response = await authFetch(`${API_BASE}/customers/${tenantId}/payments`);
       const data = await response.json();
       const paymentsArray = Array.isArray(data) ? data : [];
       setPayments(paymentsArray);
@@ -617,7 +617,7 @@ export default function App() {
 
   const loadCustomerAgingReport = async () => {
     try {
-      const response = await fetch(`${API_BASE}/reports/aging/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/reports/aging/${tenantId}`);
       const data = await response.json();
       setAgingReport(data);
     } catch (error) {
@@ -627,7 +627,7 @@ export default function App() {
 
   const loadCustomerDebtReports = async () => {
     try {
-      const response = await fetch(`${API_BASE}/dashboard/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/dashboard/${tenantId}`);
       const data = await response.json();
       const report = {
         revenue: Number(data.total_revenue) || 0,
@@ -646,7 +646,7 @@ export default function App() {
       return Alert.alert('Validation', 'Expense category and amount are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/expenses`, {
+      const response = await authFetch(`${API_BASE}/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...expenseForm })
@@ -667,7 +667,7 @@ export default function App() {
 
   const loadProducts = async () => {
     try {
-      const response = await fetch(`${API_BASE}/products/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/products/${tenantId}`);
       const data = await response.json();
       setProducts(data);
     } catch (error) {
@@ -700,7 +700,7 @@ export default function App() {
 
   const loadSales = async () => {
     try {
-      const response = await fetch(`${API_BASE}/sales/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/sales/${tenantId}`);
       const data = await response.json();
       setSales(data);
     } catch (error) {
@@ -710,7 +710,7 @@ export default function App() {
 
   const loadSaleDetails = async (saleId) => {
     try {
-      const response = await fetch(`${API_BASE}/sales/${tenantId}/${saleId}`);
+      const response = await authFetch(`${API_BASE}/sales/${tenantId}/${saleId}`);
       const data = await response.json();
       if (!data.sale) {
         return Alert.alert('Not found', 'Sale record was not found.');
@@ -724,7 +724,7 @@ export default function App() {
 
   const loadDeliveryDetails = async (deliveryId) => {
     try {
-      const response = await fetch(`${API_BASE}/deliveries/${tenantId}/${deliveryId}`);
+      const response = await authFetch(`${API_BASE}/deliveries/${tenantId}/${deliveryId}`);
       const data = await response.json();
       setSelectedDelivery(data.delivery);
       setDeliveryStatusForm({ status: data.delivery.status || '', proof_of_delivery_url: data.delivery.proof_of_delivery_url || '' });
@@ -739,7 +739,7 @@ export default function App() {
       return Alert.alert('Validation', 'Select a delivery first.');
     }
     try {
-      const response = await fetch(`${API_BASE}/deliveries/${selectedDelivery.id}/status`, {
+      const response = await authFetch(`${API_BASE}/deliveries/${selectedDelivery.id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, status: deliveryStatusForm.status, proof_of_delivery_url: deliveryStatusForm.proof_of_delivery_url })
@@ -762,7 +762,7 @@ export default function App() {
       return Alert.alert('Validation', 'Customer and total amount are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/sales`, {
+      const response = await authFetch(`${API_BASE}/sales`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -807,7 +807,7 @@ export default function App() {
       return Alert.alert('Validation', 'Product name and price are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/products`, {
+      const response = await authFetch(`${API_BASE}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...productForm })
@@ -828,7 +828,7 @@ export default function App() {
 
   const loadDebts = async () => {
     try {
-      const response = await fetch(`${API_BASE}/customers/${tenantId}/debts`);
+      const response = await authFetch(`${API_BASE}/customers/${tenantId}/debts`);
       const data = await response.json();
       setCustomerDebts(data);
     } catch (error) {
@@ -838,7 +838,7 @@ export default function App() {
 
   const loadCustomerLedger = async (customerId) => {
     try {
-      const response = await fetch(`${API_BASE}/customers/${tenantId}/ledger/${customerId}`);
+      const response = await authFetch(`${API_BASE}/customers/${tenantId}/ledger/${customerId}`);
       const data = await response.json();
       setLedgerEntries({ customerId, ...data });
       setPaymentForm((prev) => ({ ...prev, customer_id: customerId.toString(), debt_id: '', amount: '0', payment_method: 'Cash', notes: '' }));
@@ -853,7 +853,7 @@ export default function App() {
       return Alert.alert('Validation', 'Select a customer ledger and payment amount.');
     }
     try {
-      const response = await fetch(`${API_BASE}/customers/${ledgerEntries.customerId}/payment`, {
+      const response = await authFetch(`${API_BASE}/customers/${ledgerEntries.customerId}/payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, debt_id: paymentForm.debt_id || null, amount: parseFloat(paymentForm.amount), payment_method: paymentForm.payment_method, notes: paymentForm.notes })
@@ -877,7 +877,7 @@ export default function App() {
       return Alert.alert('Validation', 'Customer and amount are required for a payment.');
     }
     try {
-      const response = await fetch(`${API_BASE}/customers/${paymentForm.customer_id}/payment`, {
+      const response = await authFetch(`${API_BASE}/customers/${paymentForm.customer_id}/payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, debt_id: paymentForm.debt_id || null, amount: parseFloat(paymentForm.amount), payment_method: paymentForm.payment_method, notes: paymentForm.notes })
@@ -898,7 +898,7 @@ export default function App() {
 
   const loadVehicles = async () => {
     try {
-      const response = await fetch(`${API_BASE}/vehicles/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/vehicles/${tenantId}`);
       const data = await response.json();
       setVehicles(data);
     } catch (error) {
@@ -911,7 +911,7 @@ export default function App() {
       return Alert.alert('Validation', 'Plate and type are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/vehicles`, {
+      const response = await authFetch(`${API_BASE}/vehicles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...vehicleForm })
@@ -932,7 +932,7 @@ export default function App() {
 
   const loadDeliveries = async () => {
     try {
-      const response = await fetch(`${API_BASE}/deliveries/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/deliveries/${tenantId}`);
       const data = await response.json();
       setDeliveries(data);
     } catch (error) {
@@ -945,7 +945,7 @@ export default function App() {
       return Alert.alert('Validation', 'Destination and customer name are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/deliveries`, {
+      const response = await authFetch(`${API_BASE}/deliveries`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...deliveryForm })
@@ -966,7 +966,7 @@ export default function App() {
 
   const loadSuppliers = async () => {
     try {
-      const response = await fetch(`${API_BASE}/suppliers/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/suppliers/${tenantId}`);
       const data = await response.json();
       setSuppliers(data);
     } catch (error) {
@@ -977,7 +977,7 @@ export default function App() {
   const saveSupplier = async () => {
     if (!supplierForm.name) return Alert.alert('Validation', 'Supplier name is required.');
     try {
-      const response = await fetch(`${API_BASE}/suppliers`, {
+      const response = await authFetch(`${API_BASE}/suppliers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...supplierForm })
@@ -1013,7 +1013,7 @@ export default function App() {
   const updateSupplier = async () => {
     if (!selectedSupplier) return Alert.alert('Validation', 'Select a supplier first.');
     try {
-      const response = await fetch(`${API_BASE}/suppliers/${selectedSupplier.id}`, {
+      const response = await authFetch(`${API_BASE}/suppliers/${selectedSupplier.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...supplierForm })
@@ -1035,7 +1035,7 @@ export default function App() {
 
   const deleteSupplier = async (supplier) => {
     try {
-      const response = await fetch(`${API_BASE}/suppliers/${supplier.id}`, {
+      const response = await authFetch(`${API_BASE}/suppliers/${supplier.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId })
@@ -1054,7 +1054,7 @@ export default function App() {
 
   const loadPurchaseOrders = async () => {
     try {
-      const response = await fetch(`${API_BASE}/purchase-orders/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/purchase-orders/${tenantId}`);
       const data = await response.json();
       setPurchaseOrders(data);
     } catch (error) {
@@ -1067,7 +1067,7 @@ export default function App() {
       return Alert.alert('Validation', 'Order number and supplier are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/purchase-orders`, {
+      const response = await authFetch(`${API_BASE}/purchase-orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...purchaseOrderForm })
@@ -1103,7 +1103,7 @@ export default function App() {
   const updatePurchaseOrder = async () => {
     if (!selectedPurchaseOrder) return Alert.alert('Validation', 'Select an order first.');
     try {
-      const response = await fetch(`${API_BASE}/purchase-orders/${selectedPurchaseOrder.id}`, {
+      const response = await authFetch(`${API_BASE}/purchase-orders/${selectedPurchaseOrder.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...purchaseOrderForm })
@@ -1125,7 +1125,7 @@ export default function App() {
 
   const deletePurchaseOrder = async (order) => {
     try {
-      const response = await fetch(`${API_BASE}/purchase-orders/${order.id}`, {
+      const response = await authFetch(`${API_BASE}/purchase-orders/${order.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId })
@@ -1144,7 +1144,7 @@ export default function App() {
 
   const loadAttendance = async () => {
     try {
-      const response = await fetch(`${API_BASE}/attendance/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/attendance/${tenantId}`);
       const data = await response.json();
       setAttendanceRecords(data);
     } catch (error) {
@@ -1157,7 +1157,7 @@ export default function App() {
       return Alert.alert('Validation', 'Employee and work date are required.');
     }
     try {
-      const response = await fetch(`${API_BASE}/attendance`, {
+      const response = await authFetch(`${API_BASE}/attendance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...attendanceForm })
@@ -1192,7 +1192,7 @@ export default function App() {
   const updateAttendance = async () => {
     if (!selectedAttendance) return Alert.alert('Validation', 'Select an attendance record first.');
     try {
-      const response = await fetch(`${API_BASE}/attendance/${selectedAttendance.id}`, {
+      const response = await authFetch(`${API_BASE}/attendance/${selectedAttendance.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId, ...attendanceForm })
@@ -1214,7 +1214,7 @@ export default function App() {
 
   const deleteAttendance = async (record) => {
     try {
-      const response = await fetch(`${API_BASE}/attendance/${record.id}`, {
+      const response = await authFetch(`${API_BASE}/attendance/${record.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tenant_id: tenantId })
@@ -1233,7 +1233,7 @@ export default function App() {
 
   const loadDashboardSummary = async () => {
     try {
-      const response = await fetch(`${API_BASE}/dashboard/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/dashboard/${tenantId}`);
       const data = await response.json();
       setDashboardSummary(data);
     } catch (error) {
@@ -1243,7 +1243,7 @@ export default function App() {
 
   const loadBossMetrics = async () => {
     try {
-      const res = await fetch(`${API_BASE}/reports/sales-summary?tenantId=${tenantId}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const res = await authFetch(`${API_BASE}/reports/sales-summary?tenantId=${tenantId}`, { headers: { Authorization: `Bearer ${authToken}` } });
       if (res.ok) {
         const sdata = await res.json();
         setBossSalesSummary(sdata);
@@ -1252,7 +1252,7 @@ export default function App() {
       console.warn('Boss metrics load failed', e.message || e);
     }
     try {
-      const r = await fetch(`${API_BASE}/reports/growth?tenantId=${tenantId}`, { headers: { Authorization: `Bearer ${authToken}` } });
+      const r = await authFetch(`${API_BASE}/reports/growth?tenantId=${tenantId}`, { headers: { Authorization: `Bearer ${authToken}` } });
       if (r.ok) {
         const g = await r.json();
         setGrowthReport(g);
@@ -1336,7 +1336,7 @@ export default function App() {
 
   const loadFinanceSummary = async () => {
     try {
-      const response = await fetch(`${API_BASE}/finance/summary/${tenantId}`);
+      const response = await authFetch(`${API_BASE}/finance/summary/${tenantId}`);
       const data = await response.json();
       setFinanceSummary(data);
     } catch (error) {
@@ -1390,7 +1390,38 @@ export default function App() {
       headers['Content-Type'] = 'application/json';
     }
     const response = await fetch(url, { ...options, headers });
+    if (response.status === 401 && authToken) {
+      clearSessionTimeout();
+      setAuthToken(null);
+      setUserSession(null);
+      setCurrentScreen('Login');
+      Alert.alert('Session expired', 'Please log in again to continue.');
+    }
     return response;
+  };
+
+  // Demo records are useful for mockups, but must never remain visible after a
+  // real user session starts. Remote API responses become the source of truth.
+  const clearDemoData = () => {
+    setCustomers([]);
+    setProducts([]);
+    setSales([]);
+    setCustomerDebts([]);
+    setVehicles([]);
+    setDeliveries([]);
+    setSuppliers([]);
+    setPurchaseOrders([]);
+    setAttendanceRecords([]);
+    setExpenses([]);
+    setPayments([]);
+    setUsers([]);
+    setPaymentSummary({ total_payments: 0, total_amount: 0, average_payment: 0, last_payment_date: 'No payments yet' });
+    setPaymentSummaryChart(null);
+    setAgingReport([]);
+    setReportData(null);
+    setFinanceSummary({ total_revenue: 0, total_expenses: 0, gross_profit: 0, profit_margin: '0%', cash_position: 0, accounts_receivable: 0 });
+    setDashboardSummary({ total_customers: 0, active_sales: 0, pending_deliveries: 0, low_stock_items: 0, total_inventory_value: 0, pending_payments: 0 });
+    setBossSalesSummary({ daily: 0, weekly: 0, monthly: 0 });
   };
 
   const loginUser = async () => {
@@ -1407,6 +1438,7 @@ export default function App() {
       if (!response.ok) {
         return Alert.alert('Login failed', data.error || 'Unable to authenticate');
       }
+      clearDemoData();
       setAuthToken(data.token);
       setUserSession(data.user);
       setTenantId(data.user.tenant_id || 1);
@@ -1424,11 +1456,10 @@ export default function App() {
     }
   };
 
-  const handleLogin = () => {
+    const handleLogin = () => {
     console.log('Login button pressed');
     loginUser();
   };
-
   const registerUser = async () => {
     if (!registerForm.business_name || !registerForm.subdomain || !registerForm.name || !registerForm.email || !registerForm.password) {
       return Alert.alert('Validation', 'All registration fields are required.');
@@ -1446,6 +1477,7 @@ export default function App() {
       if (!response.ok) {
         return Alert.alert('Registration failed', data.error || 'Unable to register');
       }
+      clearDemoData();
       setAuthToken(data.token);
       setUserSession(data.user);
       setTenantId(data.user.tenant_id || 1);
@@ -1467,7 +1499,7 @@ export default function App() {
       });
       const data = await response.json();
       if (!response.ok) return Alert.alert('OTP error', data.error || 'Could not send OTP');
-      Alert.alert('OTP Sent', `OTP code: ${data.otp} (demo)`);
+      Alert.alert('OTP Sent', 'Check your phone or email for the verification code.');
       setCurrentScreen('VerifyOTP');
     } catch (error) {
       Alert.alert('OTP error', error.message);
@@ -1502,7 +1534,7 @@ export default function App() {
       });
       const data = await response.json();
       if (!response.ok) return Alert.alert('Error', data.error || 'Unable to request password reset');
-      Alert.alert('Reset Token', `Token: ${data.reset_token} (demo)`);
+      Alert.alert('Reset Requested', 'If the account exists, reset instructions will be sent through the configured recovery channel.');
       setCurrentScreen('ResetPassword');
     } catch (error) {
       Alert.alert('Reset error', error.message);
@@ -1538,6 +1570,8 @@ export default function App() {
       const data = await response.json();
       if (response.ok) {
         Alert.alert('Biometric', data.message);
+      } else {
+        Alert.alert('Biometric unavailable', data.error || 'Biometric login is not configured yet.');
       }
     } catch (error) {
       Alert.alert('Biometric error', error.message);
@@ -1703,7 +1737,7 @@ export default function App() {
                   animation="zoomIn"
                   duration={1600}
                   delay={260}
-                  source={require('./assets/jengaplus_enhanced.png')}
+                  source={require('./assets/icon.png')}
                   style={styles.startupLogo}
                   resizeMode="contain"
                 />
@@ -2029,7 +2063,7 @@ export default function App() {
           </View>
 
           <View style={{ marginTop: 16 }}>
-            <VoiceAssistant onCommand={(cmd)=>Alert.alert('Voice', `Command: ${cmd}`)} />
+            <VoiceAssistant apiBase={API_BASE} authToken={authToken} onCommand={(cmd)=>Alert.alert('Voice', `Command: ${cmd}`)} />
             <View style={{ height: 12 }} />
             <Badges badges={[{title:'Top Seller - Bronze'},{title:'On-time Delivery'}]} />
           </View>

@@ -62,13 +62,13 @@
     },
     "extra": {
       "apiBase": "https://jengaplus-backend.onrender.com",
-      "eas": {
-        "projectId": "b1d39f00-ebb2-472a-852d-05b0bfdc4181"
-      },
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "151df91b-eca4-4581-a1b0-2c1ef33dc0aa"
       }
     },
-    "owner": "jengapluslimited"
+    "owner": "heis_prince"
   }
 }

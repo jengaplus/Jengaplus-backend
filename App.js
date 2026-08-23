@@ -17,7 +17,8 @@ const allowedRegistrationRoles = ['Boss', 'Salesperson', 'Driver'];
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('Login'); // Login, Register, ForgotPassword, ResetPassword, VerifyOTP, BossDashboard, SalesDashboard, Customers, AddCustomer, RecordDebt, Expenses, AddExpense, FinanceSummary, DashboardSummary, Vehicles, AddVehicle, Deliveries, AddDelivery, Suppliers, AddSupplier, EditSupplier, PurchaseOrders, AddPurchaseOrder, EditPurchaseOrder, Attendance, AddAttendance, EditAttendance, Users, EditUser
-  const [initializing, setInitializing] = useState(true);
+  // Native Expo splash is the only startup screen; render Login/Register immediately after it hides.
+  const [initializing] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authToken, setAuthToken] = useState(null);
@@ -101,13 +102,6 @@ export default function App() {
     { id: 4, name: 'Northern Timber Trading', contact_person: 'Ms. Grace', phone: '+255789404142', email: 'supply@nttimber.com', address: 'Arusha', rating: '4.6', notes: 'High quality timber', payment_terms: 'Net 30', created_at: '2024-02-10' }
   ]);
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setInitializing(false);
-    }, 3200);
-
-    return () => clearTimeout(timeout);
-  }, []);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [supplierForm, setSupplierForm] = useState({ name: '', contact_person: '', phone: '', email: '', address: '', rating: '0', notes: '' });
   const [selectedTenant, setSelectedTenant] = useState(null);
@@ -1729,36 +1723,13 @@ export default function App() {
     >
       {initializing ? (
         <View style={styles.startupScreen}>
-          <Animatable.View animation="fadeInUp" duration={900} style={styles.startupCard}>
-            <Animatable.View animation="pulse" easing="ease-out" iterationCount="infinite" duration={2000} style={styles.startupLogoPulse}>
-              <View style={styles.startupGlowRing} />
-              <View style={styles.startupLogoFrame}>
-                <Animatable.Image
-                  animation="zoomIn"
-                  duration={1600}
-                  delay={260}
-                  source={require('./assets/icon.png')}
-                  style={styles.startupLogo}
-                  resizeMode="contain"
-                />
-              </View>
-            </Animatable.View>
-            <Animatable.Text animation="fadeInDown" duration={1100} delay={900} style={styles.startupTitle}>
-              JENGA PLUS
-            </Animatable.Text>
-            <Animatable.Text animation="fadeIn" duration={1000} delay={1200} style={styles.startupBadgeText}>
-              BUILT FOR BUSINESS
-            </Animatable.Text>
-            <View style={styles.startupFeatureBadgeCombined}>
-              <Text style={styles.startupFeatureText}>🚀 Speed · 📈 Growth · 📊 Control</Text>
-            </View>
-            <Animatable.View animation="slideInLeft" duration={900} delay={1500} style={styles.startupProgressBar}>
-              <View style={[styles.startupProgressFill, { width: '90%' }]} />
-            </Animatable.View>
-            <Animatable.Text animation="fadeIn" duration={1000} delay={1650} style={styles.startupHint}>
-              Preparing your workspace, insights, and tools…
-            </Animatable.Text>
-          </Animatable.View>
+          <Animatable.Image
+            animation="fadeIn"
+            duration={700}
+            source={require('./assets/jengaplus_splash_final_1080.png')}
+            style={styles.startupSplashArtwork}
+            resizeMode="contain"
+          />
         </View>
       ) : (
         currentScreen === 'Login' && (
@@ -3844,6 +3815,7 @@ const styles = StyleSheet.create({
   loginWatermark: { fontSize: 72, fontWeight: '900', color: '#FFFFFF', letterSpacing: 14, textTransform: 'uppercase' },
   loginCard: { width: '100%', maxWidth: 420, backgroundColor: 'rgba(12, 20, 42, 0.88)', borderRadius: 28, padding: 28, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.12)', shadowColor: '#0B2444', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.26, shadowRadius: 32, elevation: 18 },
   startupScreen: { flex: 1, backgroundColor: '#020814', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  startupSplashArtwork: { width: '100%', height: '100%', maxWidth: 520, maxHeight: 900 },
   startupCard: { width: '100%', maxWidth: 440, backgroundColor: 'rgba(10, 18, 36, 0.96)', borderRadius: 32, padding: 28, borderWidth: 1, borderColor: 'rgba(109, 116, 129, 0.18)', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.25, shadowRadius: 30, elevation: 18, alignItems: 'center' },
   startupBadgeText: { color: '#FACC15', fontSize: 14, fontWeight: '900', letterSpacing: 2, textTransform: 'uppercase', marginTop: 12, marginBottom: 18, opacity: 0.98 },
   startupTitle: { color: '#F8FAFC', fontSize: 40, fontWeight: '900', letterSpacing: 4, textTransform: 'uppercase', marginTop: 18, marginBottom: 8, textAlign: 'center', textShadowColor: 'rgba(96, 165, 250, 0.4)', textShadowOffset: { width: 0, height: 7 }, textShadowRadius: 18 },

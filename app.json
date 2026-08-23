@@ -36,7 +36,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/icon.png",
+          "image": "./assets/jengaplus_splash_final_1080.png",
           "resizeMode": "contain",
           "backgroundColor": "#020814"
         }
@@ -62,11 +62,11 @@
     },
     "extra": {
       "apiBase": "https://jengaplus-backend.onrender.com",
-      "router": {
-        "origin": false
-      },
       "eas": {
         "projectId": "151df91b-eca4-4581-a1b0-2c1ef33dc0aa"
+      },
+      "router": {
+        "origin": false
       }
     },
     "owner": "heis_prince"
